@@ -96,13 +96,20 @@ def receber_resultado():
     ultima_atualizacao = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     ultimo_log = dados.get("ultimo_log", f"Dados recebidos às {datetime.now().strftime('%H:%M:%S')}")
 
+    # Garante que cada cotação recebida tem o campo "status".
+    # Se o robô não enviar, assume "completo" (já pesquisado).
+    cotacoes = dados.get("cotacoes", [])
+    for cotacao in cotacoes:
+        if "status" not in cotacao:
+            cotacao["status"] = "completo"
+
     # Campos para atualizar no painel
     update_fields = {
         "status_robo":        dados.get("status_robo", "Atualizado pelo robô"),
         "ultimo_log":         ultimo_log,
         "alerta_erro":        dados.get("alerta_erro", None),
         "ultima_atualizacao": ultima_atualizacao,
-        "cotacoes":           dados.get("cotacoes", [])
+        "cotacoes":           cotacoes
     }
 
     if "performance_roi" in dados:
@@ -117,7 +124,7 @@ def receber_resultado():
         "timestamp":    ultima_atualizacao,
         "status_robo":  update_fields["status_robo"],
         "ultimo_log":   ultimo_log,
-        "cotacoes":     dados.get("cotacoes", []),
+        "cotacoes":     cotacoes,
         "performance_roi": dados.get("performance_roi", {})
     })
 
@@ -137,13 +144,28 @@ def receber_solicitacao():
 
     ultima_atualizacao = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
+    # Cria cotações iniciais com status "pendente" para cada item solicitado.
+    # O robô vai atualizar para "completo" conforme pesquisa cada um.
+    cotacoes_pendentes = [
+        {
+            "item": f"{item.get('marca', '')} {item.get('modelo', '')}".strip(),
+            "desc": item.get("observacoes", ""),
+            "qtd": item.get("quantidade", 1),
+            "fornecedor": "",
+            "preco": None,
+            "link": "",
+            "status": "pendente"   # <-- campo novo
+        }
+        for item in dados["itens"]
+    ]
+
     # Atualiza status do painel para "Em execução" (chave fixa, com upsert por segurança)
     colecao_estado.update_one({"_id": ESTADO_ID}, {"$set": {
         "status_robo":        "Em execução",
         "ultimo_log":         f"Nova solicitação recebida às {datetime.now().strftime('%H:%M:%S')}. Iniciando pesquisa...",
         "alerta_erro":        None,
         "ultima_atualizacao": ultima_atualizacao,
-        "cotacoes":           []
+        "cotacoes":           cotacoes_pendentes   # exibe pendentes no dashboard imediatamente
     }}, upsert=True)
 
     # Salva histórico acumulativo em pedidos_entrada

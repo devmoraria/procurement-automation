@@ -151,6 +151,24 @@ function atualizarKPIs(roi) {
     document.getElementById('kpi-robo').innerText   = `${roi.tempo_robo} hrs/mês`;
 }
 
+// ─── Badge de status da cotação ──────────────
+// Retorna HTML do badge conforme o valor de "status" recebido do robô.
+function badgeStatus(status) {
+    if (status === 'completo') {
+        return `<span style="
+            display:inline-block; padding:2px 8px; border-radius:10px;
+            background:#e6f4ea; color:#137333; font-size:11px; font-weight:600;">
+            ✔ Completo
+        </span>`;
+    }
+    // pendente (ou qualquer outro valor desconhecido)
+    return `<span style="
+        display:inline-block; padding:2px 8px; border-radius:10px;
+        background:#fff3cd; color:#856404; font-size:11px; font-weight:600;">
+        ⏳ Pendente
+    </span>`;
+}
+
 // ─── Polling ─────────────────────────────────
 let ultimoLog = "";
 
@@ -163,7 +181,7 @@ async function carregarDadosAutomacao() {
         if (dados.ultimo_log !== ultimoLog) {
             ultimoLog = dados.ultimo_log;
 
-            // Badge
+            // Badge do robô
             if (dados.alerta_erro) {
                 statusBadge.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Erro detectado`;
                 statusBadge.style.cssText = "background:#fce8e6;color:#c5221f;";
@@ -186,23 +204,39 @@ async function carregarDadosAutomacao() {
             tbody.innerHTML = "";
             if (dados.cotacoes && dados.cotacoes.length > 0) {
                 dados.cotacoes.forEach(c => {
-                    const link = c.link ? `<a href="${c.link}" target="_blank" style="color:#002776;font-size:11px;margin-left:4px;">↗</a>` : "";
+                    const link = c.link
+                        ? `<a href="${c.link}" target="_blank" style="color:#002776;font-size:11px;margin-left:4px;">↗</a>`
+                        : "";
+
+                    // Mostra preço apenas se já tiver sido pesquisado (status completo)
+                    const precoExibido = (c.status === 'completo' && c.preco !== null && c.preco !== undefined)
+                        ? `<b>R$ ${c.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b>`
+                        : `<span style="color:#999; font-size:12px;">—</span>`;
+
+                    // Fornecedor só exibe quando completo
+                    const fornecedorExibido = c.fornecedor
+                        ? `<span style="color:#007200">●</span> ${c.fornecedor}${link}`
+                        : `<span style="color:#999; font-size:12px;">Aguardando...</span>`;
+
                     tbody.innerHTML += `
                         <tr>
                             <td><strong>${c.item}</strong></td>
                             <td>${c.desc}</td>
                             <td>${c.qtd}</td>
-                            <td><span style="color:#007200">●</span> ${c.fornecedor}${link}</td>
-                            <td><b>R$ ${c.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></td>
+                            <td>${fornecedorExibido}</td>
+                            <td>${precoExibido}</td>
+                            <td>${badgeStatus(c.status)}</td>
                         </tr>`;
                 });
-                // Atualiza status no histórico
-                if (historicoLocal.length > 0) {
+
+                // Só marca como "Concluído" no histórico quando todos os itens estão completos
+                const todosConcluidos = dados.cotacoes.every(c => c.status === 'completo');
+                if (todosConcluidos && historicoLocal.length > 0) {
                     historicoLocal[0].status = 'Concluído';
                     renderizarHistorico();
                 }
             } else if (dados.status_robo === "Em execução") {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#856404;padding:20px;"><i class="fa-solid fa-circle-notch fa-spin"></i> Robô pesquisando preços...</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#856404;padding:20px;"><i class="fa-solid fa-circle-notch fa-spin"></i> Robô pesquisando preços...</td></tr>`;
             }
         }
     } catch (err) {
@@ -270,13 +304,14 @@ function exportarPDF() {
     const rows = [];
     document.querySelectorAll('#dashboard-table-body tr').forEach(tr => {
         const cells = tr.querySelectorAll('td');
-        if (cells.length >= 5) {
+        if (cells.length >= 6) {
             rows.push([
                 cells[0].innerText,
                 cells[1].innerText,
                 cells[2].innerText,
                 cells[3].innerText.replace('●', '').trim(),
-                cells[4].innerText
+                cells[4].innerText,
+                cells[5].innerText.trim()   // status
             ]);
         }
     });
@@ -288,12 +323,15 @@ function exportarPDF() {
     } else {
         doc.autoTable({
             startY: 96,
-            head: [['Item', 'Especificação', 'Qtd', 'Fornecedor', 'Menor Preço']],
+            head: [['Item', 'Especificação', 'Qtd', 'Fornecedor', 'Menor Preço', 'Status']],
             body: rows,
             headStyles: { fillColor: azul, textColor: branco, fontStyle: 'bold', fontSize: 9 },
             bodyStyles: { fontSize: 9, textColor: [30, 30, 30] },
             alternateRowStyles: { fillColor: [248, 249, 250] },
-            columnStyles: { 4: { fontStyle: 'bold', textColor: verde } },
+            columnStyles: {
+                4: { fontStyle: 'bold', textColor: verde },
+                5: { textColor: [80, 80, 80] }
+            },
             margin: { left: 15, right: 15 },
             tableLineColor: [220, 220, 220],
             tableLineWidth: 0.1,
