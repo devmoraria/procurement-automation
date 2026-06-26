@@ -137,8 +137,16 @@ def receber_solicitacao():
         "timestamp": estado["ultima_atualizacao"],
         "itens": dados["itens"]
     }
+    historico = []
+    if os.path.exists("solicitacao.json"):
+        with open("solicitacao.json", "r", encoding="utf-8") as f:
+            try:
+                historico = json.load(f)
+            except json.JSONDecodeError:
+                historico = []
+    historico.append(solicitacao)
     with open("solicitacao.json", "w", encoding="utf-8") as f:
-        json.dump(solicitacao, f, ensure_ascii=False, indent=2)
+        json.dump(historico, f, ensure_ascii=False, indent=2)
 
     print(f"[{estado['ultima_atualizacao']}] Solicitação salva: {len(dados['itens'])} item(s)")
     return jsonify({"ok": True, "mensagem": f"{len(dados['itens'])} item(s) enviados para o robô"}), 200
