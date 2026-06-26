@@ -2,15 +2,22 @@
 server.py - Backend da Automação de Compras TI
 Grupo 1 - UiPath + Copa do Mundo BR
 
-Como rodar:
+Como rodar localmente:
     pip install flask flask-cors
     python server.py
 
+Como hospedar (ex: Render, Railway, Fly.io):
+    - Defina a variável de ambiente PORT (a plataforma faz isso automaticamente)
+    - Defina SERVER_ORIGIN com a URL do seu front-end, ex:
+        SERVER_ORIGIN=https://meu-dashboard.netlify.app
+    - O Procfile (se necessário) deve conter:
+        web: python server.py
+
 Rotas:
-    GET  /dados          -> Page faz polling aqui a cada 5s
-    POST /resultado      -> UiPath envia os resultados aqui
-    POST /solicitacao    -> Page envia os itens para cotar
-    GET  /status         -> Healthcheck
+    GET  /dados        -> Front-end faz polling aqui a cada 5s
+    POST /resultado    -> UiPath envia os resultados aqui
+    POST /solicitacao  -> Front-end envia os itens para cotar
+    GET  /status       -> Healthcheck
 """
 
 from flask import Flask, jsonify, request
@@ -20,14 +27,23 @@ import json
 import os
 
 app = Flask(__name__)
-CORS(app)  # Permite que a page (outro origem) acesse o servidor
 
 # ─────────────────────────────────────────────
-# ESTADO GLOBAL (memória do servidor)
-# Em produção, usar um banco de dados.
+# CORS
+# Em produção, defina SERVER_ORIGIN com a URL
+# exata do seu front-end para restringir acesso.
+# Ex: SERVER_ORIGIN=https://meu-dashboard.netlify.app
+# Deixar vazio libera todas as origens (ok para demo).
+# ─────────────────────────────────────────────
+origem_permitida = os.environ.get("SERVER_ORIGIN", "*")
+CORS(app, resources={r"/*": {"origins": origem_permitida}})
+
+
+# ─────────────────────────────────────────────
+# ESTADO GLOBAL
 # Para a demo, memória é suficiente.
+# Em produção, substituir por banco de dados.
 # ─────────────────────────────────────────────
-
 estado = {
     "status_robo": "Aguardando solicitação",
     "ultimo_log": "Servidor iniciado. Aguardando dados do robô UiPath...",
@@ -42,8 +58,9 @@ estado = {
     "cotacoes": []
 }
 
+
 # ─────────────────────────────────────────────
-# ROTA 1: Page faz GET aqui a cada 5 segundos
+# ROTA 1: Front-end faz GET aqui a cada 5s
 # ─────────────────────────────────────────────
 @app.route('/dados', methods=['GET'])
 def get_dados():
@@ -53,10 +70,9 @@ def get_dados():
 # ─────────────────────────────────────────────
 # ROTA 2: UiPath envia os resultados aqui
 #
-# O robô deve fazer um POST para:
-#   http://localhost:5000/resultado
+# O robô deve fazer POST para /resultado
+# com o seguinte JSON:
 #
-# Com o seguinte JSON no body:
 # {
 #   "status_robo": "Concluído",
 #   "ultimo_log": "Pesquisa finalizada. 3 itens cotados.",
@@ -86,7 +102,6 @@ def receber_resultado():
     if not dados:
         return jsonify({"erro": "Body JSON inválido ou vazio"}), 400
 
-    # Atualiza o estado global com o que o UiPath enviou
     estado["status_robo"]        = dados.get("status_robo", "Atualizado pelo robô")
     estado["ultimo_log"]         = dados.get("ultimo_log", f"Dados recebidos às {datetime.now().strftime('%H:%M:%S')}")
     estado["alerta_erro"]        = dados.get("alerta_erro", None)
@@ -101,9 +116,9 @@ def receber_resultado():
 
 
 # ─────────────────────────────────────────────
-# ROTA 3: Page envia a solicitação de cotação
+# ROTA 3: Front-end envia a solicitação
 # O servidor salva em solicitacao.json para
-# o UiPath ler e iniciar a pesquisa.
+# o UiPath monitorar e iniciar a pesquisa.
 # ─────────────────────────────────────────────
 @app.route('/solicitacao', methods=['POST'])
 def receber_solicitacao():
@@ -112,14 +127,12 @@ def receber_solicitacao():
     if not dados or "itens" not in dados:
         return jsonify({"erro": "Formato inválido. Envie { itens: [...] }"}), 400
 
-    # Marca o robô como "Em execução"
     estado["status_robo"]        = "Em execução"
     estado["ultimo_log"]         = f"Nova solicitação recebida às {datetime.now().strftime('%H:%M:%S')}. Iniciando pesquisa..."
     estado["alerta_erro"]        = None
     estado["ultima_atualizacao"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    estado["cotacoes"]           = []  # Limpa resultados anteriores
+    estado["cotacoes"]           = []
 
-    # Salva a solicitação em arquivo para o UiPath ler
     solicitacao = {
         "timestamp": estado["ultima_atualizacao"],
         "itens": dados["itens"]
@@ -142,9 +155,17 @@ def status():
     })
 
 
+# ─────────────────────────────────────────────
+# INICIALIZAÇÃO
+# HOST 0.0.0.0 é obrigatório para hospedagem.
+# PORT lido da variável de ambiente (padrão 5000).
+# ─────────────────────────────────────────────
 if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+
     print("=" * 50)
     print("  Servidor Automação de Compras TI - Grupo 1")
-    print("  Rodando em http://localhost:5000")
+    print(f"  Rodando em http://0.0.0.0:{port}")
     print("=" * 50)
-    app.run(debug=True, port=5000)
+    app.run(host="0.0.0.0", port=port, debug=debug)

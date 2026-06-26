@@ -7,16 +7,16 @@
 
 ```
 projeto/
-├── index.html       ← Interface do usuário (abrir no navegador)
-├── style.css        ← Estilos visuais
-├── script.js        ← Lógica da página (faz polling no servidor)
-├── server.py        ← Backend Python (Flask) — o coração do sistema
-└── solicitacao.json ← Criado automaticamente quando usuário envia pedido
+├── index.html        ← Interface do usuário (abrir no navegador)
+├── style.css         ← Estilos visuais
+├── script.js         ← Lógica da página (faz polling no servidor)
+├── server.py         ← Backend Python (Flask) — coração do sistema
+└── solicitacao.json  ← Criado automaticamente ao enviar pedido
 ```
 
 ---
 
-## 🚀 Como Rodar
+## 🚀 Como Rodar Localmente
 
 ### 1. Instalar dependências Python
 ```bash
@@ -30,16 +30,40 @@ python server.py
 Servidor sobe em `http://localhost:5000`
 
 ### 3. Abrir a interface
-Abrir `index.html` no navegador. A página vai conectar ao servidor automaticamente.
+Abrir `index.html` no navegador. A página conecta ao servidor automaticamente.
+
+> **Atenção:** atualize a constante `SERVER_URL` no topo do `script.js` se o endereço do servidor mudar.
+> ```js
+> const SERVER_URL = "http://localhost:5000"; // local
+> // ou
+> const SERVER_URL = "https://seu-servidor.onrender.com"; // hospedado
+> ```
+
+---
+
+## ☁️ Como Hospedar o Servidor (ex: Render, Railway, Fly.io)
+
+1. Suba o repositório no GitHub.
+2. Crie um novo serviço Web apontando para o repositório.
+3. Configure:
+   - **Build command:** `pip install flask flask-cors`
+   - **Start command:** `python server.py`
+4. A plataforma define `PORT` automaticamente — o `server.py` já lê essa variável.
+5. (Opcional) Defina a variável de ambiente `SERVER_ORIGIN` com a URL do seu front-end para restringir o CORS:
+   ```
+   SERVER_ORIGIN=https://meu-dashboard.netlify.app
+   ```
+6. Copie a URL pública gerada e cole em `SERVER_URL` no `script.js`.
 
 ---
 
 ## 🤖 Instruções para UiPath Studio
 
-### O robô precisa fazer DUAS coisas:
+O robô precisa fazer **duas coisas**:
 
-#### 1. LER a solicitação
-Quando o usuário clica "Enviar Solicitação", o servidor cria um arquivo `solicitacao.json`:
+### 1. LER a solicitação
+
+Quando o usuário clica "Enviar Solicitação", o servidor cria/atualiza `solicitacao.json`:
 
 ```json
 {
@@ -55,10 +79,11 @@ Quando o usuário clica "Enviar Solicitação", o servidor cria um arquivo `soli
 }
 ```
 
-O robô deve monitorar este arquivo e iniciar a pesquisa quando ele aparecer/atualizar.
+O robô deve monitorar este arquivo e iniciar a pesquisa quando ele aparecer ou for atualizado.
 
-#### 2. ENVIAR os resultados
-Após pesquisar, o robô faz um **HTTP POST** para `http://localhost:5000/resultado` com este JSON:
+### 2. ENVIAR os resultados
+
+Após pesquisar, o robô faz um **HTTP POST** para `{SERVER_URL}/resultado` com este JSON:
 
 ```json
 {
@@ -84,9 +109,17 @@ Após pesquisar, o robô faz um **HTTP POST** para `http://localhost:5000/result
 }
 ```
 
-No UiPath Studio, usar a activity **"HTTP Request"**:
+> **Campos obrigatórios em `performance_roi`** (nomes exatos que o dashboard lê):
+> | Campo | Tipo | Descrição |
+> |---|---|---|
+> | `tempo_manual` | número | Horas/mês do processo manual |
+> | `tempo_robo` | número | Horas/mês com o robô |
+> | `horas_poupadas` | número | Diferença entre os dois |
+> | `economia_financeira_brl` | número | Economia em R$ |
+
+No UiPath Studio, usar a activity **HTTP Request**:
 - Method: `POST`
-- URL: `http://localhost:5000/resultado`
+- URL: `{SERVER_URL}/resultado`
 - Body format: `application/json`
 - Body: o JSON acima com os dados reais da pesquisa
 
@@ -95,20 +128,20 @@ No UiPath Studio, usar a activity **"HTTP Request"**:
 ## 🔄 Fluxo Completo
 
 ```
-[Usuário preenche form] 
+[Usuário preenche form]
     → POST /solicitacao → server.py salva solicitacao.json
-    
+
 [UiPath lê solicitacao.json]
     → Pesquisa nos fornecedores
     → POST /resultado → server.py atualiza estado
-    
-[Page faz GET /dados a cada 5s]
+
+[Front-end faz GET /dados a cada 5s]
     → Detecta mudança → Atualiza Dashboard ao vivo
 ```
 
 ---
 
-## 🧪 Testar sem o UiPath (para page)
+## 🧪 Testar sem o UiPath
 
 Simular resultado do robô manualmente com curl ou Postman:
 
@@ -138,3 +171,13 @@ curl -X POST http://localhost:5000/resultado \
   }'
 ```
 
+---
+
+## 📝 .gitignore recomendado
+
+```
+solicitacao.json
+__pycache__/
+*.pyc
+.env
+```
