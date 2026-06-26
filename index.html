@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automação de Compras — Copa do Mundo BR</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+
+<div class="sidebar">
+    <div>
+        <div class="sidebar-brand">
+            <i class="fa-solid fa-robot" style="color: var(--accent);"></i> Automação de Compras
+        </div>
+        <ul class="sidebar-menu">
+            <li id="menu-dashboard" class="sidebar-item active" onclick="switchView('dashboard')">
+                <i class="fa-solid fa-chart-pie"></i> Dashboard
+            </li>
+            <li id="menu-nova-solicitacao" class="sidebar-item" onclick="switchView('nova-solicitacao')">
+                <i class="fa-solid fa-file-circle-plus"></i> Nova Solicitação
+            </li>
+            <li id="menu-historico" class="sidebar-item" onclick="switchView('historico')">
+                <i class="fa-solid fa-history"></i> Histórico
+            </li>
+            <li class="sidebar-item">
+                <i class="fa-solid fa-gear"></i> Configurações
+            </li>
+        </ul>
+    </div>
+    <!-- Rodapé Copa no sidebar -->
+    <div class="sidebar-footer">
+        🏆 Copa do Mundo 2026
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="topbar">
+        <div class="topbar-title">
+            <span class="topbar-flag">🇧🇷</span>
+            Painel de Controle — Suprimentos de TI
+        </div>
+        <div class="topbar-badge">
+            <i class="fa-solid fa-circle" style="color:#00ff88; font-size:8px;"></i>
+            Sistema Ativo
+        </div>
+    </div>
+
+    <div class="content-body">
+
+        <!-- ══ DASHBOARD ══ -->
+        <div id="view-dashboard" class="view-section active">
+            <div class="section-header">
+                <h2>Métricas de ROI e Economia</h2>
+                <p>Resultados financeiros consolidados em tempo real pelo robô UiPath.</p>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <button class="btn btn-outline" onclick="exportarPDF()">
+                    <i class="fa-solid fa-file-pdf"></i> Exportar Relatório PDF
+                </button>
+            </div>
+
+            <!-- Monitor do Robô -->
+            <div class="card-panel" style="margin-bottom: 25px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3 style="font-size: 14px;">Monitoramento do Robô UiPath</h3>
+                    <span id="robot-status" class="status-badge">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i> Conectando...
+                    </span>
+                </div>
+                <div id="robot-console" style="background:#1c1c1c; color:#00ff00; font-family:'Courier New',monospace; padding:15px; border-radius:4px; height:100px; overflow-y:auto; font-size:12px; line-height:1.6; white-space:pre-wrap;">[SISTEMA] Interface carregada. Conectando ao servidor...</div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="cards-kpi">
+                <div class="kpi-card">
+                    <h4>Economia Total (ROI)</h4>
+                    <div id="kpi-economia" class="value green">—</div>
+                </div>
+                <div class="kpi-card">
+                    <h4>Horas Poupadas / Mês</h4>
+                    <div id="kpi-horas-poupadas" class="value">—</div>
+                </div>
+                <div class="kpi-card">
+                    <h4>Processo Manual</h4>
+                    <div id="kpi-manual" class="value" style="color:#dc3545;">—</div>
+                </div>
+                <div class="kpi-card">
+                    <h4>Com UiPath</h4>
+                    <div id="kpi-robo" class="value" style="color:#002776;">—</div>
+                </div>
+            </div>
+
+            <!-- Gráfico + Tabela -->
+            <div class="chart-row">
+                <div class="card-panel">
+                    <h3 style="font-size:14px; margin-bottom:15px;">Eficiência de Tempo</h3>
+                    <div style="position:relative; height:200px; width:100%">
+                        <canvas id="dashboardChart"></canvas>
+                    </div>
+                </div>
+                <div class="card-panel">
+                    <h3 style="font-size:14px; margin-bottom:15px;">Melhores Ofertas Encontradas</h3>
+                    <div class="table-responsive">
+                        <table class="data-table" id="tabela-cotacoes">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Especificação</th>
+                                    <th>Qtd</th>
+                                    <th>Fornecedor</th>
+                                    <th>Menor Preço</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboard-table-body">
+                                <tr>
+                                    <td colspan="5" style="text-align:center; color:#999; padding:20px;">
+                                        Aguardando resultados do robô...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ NOVA SOLICITAÇÃO ══ -->
+        <div id="view-nova-solicitacao" class="view-section">
+            <div class="section-header">
+                <h2>Solicitação de Equipamentos</h2>
+                <p>Preencha a tabela com os itens. O robô pesquisará os melhores preços automaticamente.</p>
+            </div>
+
+            <div class="grid-layout">
+                <div class="card-panel">
+                    <div class="table-responsive-form">
+                        <table class="input-table" id="dynamic-input-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:5%">#</th>
+                                    <th style="width:20%">Marca</th>
+                                    <th style="width:30%">Modelo</th>
+                                    <th style="width:10%">Qtd</th>
+                                    <th style="width:30%">Especificações</th>
+                                    <th style="width:5%"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>
+                                        <select class="form-control">
+                                            <option>Dell</option><option>Lenovo</option>
+                                            <option>HP</option><option>Apple</option><option>Asus</option>
+                                        </select>
+                                    </td>
+                                    <td><input type="text" class="form-control" value="Inspiron 15 3530"></td>
+                                    <td><input type="number" class="form-control" value="1" min="1"></td>
+                                    <td><input type="text" class="form-control" value="SSD 512GB, 16GB RAM"></td>
+                                    <td><button class="btn-delete" onclick="deleteRow(this)"><i class="fa-solid fa-trash"></i></button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-outline" onclick="addNewRow()">
+                            <i class="fa-solid fa-plus"></i> Adicionar linha
+                        </button>
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn btn-secondary" onclick="clearForm()">Limpar</button>
+                            <button id="btn-enviar" class="btn btn-primary" onclick="enviarSolicitacao()">
+                                <i class="fa-solid fa-paper-plane"></i> Enviar Solicitação
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-panel">
+                    <div class="widget-info">
+                        <h3>O que acontece depois?</h3>
+                        <ul class="steps-list">
+                            <li class="step-item"><span class="step-num">1</span> Os itens são enviados ao servidor.</li>
+                            <li class="step-item"><span class="step-num">2</span> O robô UiPath lê e inicia a pesquisa.</li>
+                            <li class="step-item"><span class="step-num">3</span> Cada fornecedor é consultado automaticamente.</li>
+                            <li class="step-item"><span class="step-num">4</span> Os resultados são enviados de volta.</li>
+                            <li class="step-item"><span class="step-num">5</span> O Dashboard atualiza em tempo real.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="fluxo-title">Fluxo do Processo</div>
+            <div class="fluxo-scroll-wrapper">
+                <div class="fluxo-container">
+                    <div class="fluxo-card active">
+                        <i class="fa-solid fa-keyboard" style="color:var(--accent-blue)"></i>
+                        <div class="step-title">1. Entrada de Dados</div>
+                        <p style="color:#666">Funcionário preenche os itens na interface.</p>
+                    </div>
+                    <div class="fluxo-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                    <div class="fluxo-card">
+                        <i class="fa-solid fa-server" style="color:#e67e22"></i>
+                        <div class="step-title">2. Servidor Python</div>
+                        <p style="color:#666">server.py recebe e salva a solicitação.</p>
+                    </div>
+                    <div class="fluxo-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                    <div class="fluxo-card">
+                        <i class="fa-solid fa-robot" style="color:var(--accent-blue)"></i>
+                        <div class="step-title">3. Robô UiPath</div>
+                        <p style="color:#666">Lê a solicitação e pesquisa nos fornecedores.</p>
+                    </div>
+                    <div class="fluxo-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                    <div class="fluxo-card">
+                        <i class="fa-solid fa-gears" style="color:#137333"></i>
+                        <div class="step-title">4. Envio do Resultado</div>
+                        <p style="color:#666">UiPath faz POST dos dados ao servidor.</p>
+                    </div>
+                    <div class="fluxo-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                    <div class="fluxo-card">
+                        <i class="fa-solid fa-chart-line" style="color:#007200"></i>
+                        <div class="step-title">5. Dashboard ao Vivo</div>
+                        <p style="color:#666">Tela atualiza automaticamente com os preços.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ HISTÓRICO ══ -->
+        <div id="view-historico" class="view-section">
+            <div class="section-header">
+                <h2>Histórico de Solicitações</h2>
+                <p>Consulte o status das automações executadas.</p>
+            </div>
+            <div class="card-panel">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Data/Hora</th><th>Itens</th><th>Status</th><th>Enviado por</th></tr>
+                        </thead>
+                        <tbody id="historico-body">
+                            <tr>
+                                <td colspan="4" style="text-align:center; color:#999; padding:20px;">
+                                    Nenhuma solicitação enviada ainda.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

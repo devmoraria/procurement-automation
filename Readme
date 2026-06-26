@@ -1,0 +1,140 @@
+# Automação de Compras TI — Grupo 1
+## Como Fazer Funcionar (Passo a Passo)
+
+---
+
+## 🗂️ Estrutura de Arquivos
+
+```
+projeto/
+├── index.html       ← Interface do usuário (abrir no navegador)
+├── style.css        ← Estilos visuais
+├── script.js        ← Lógica da página (faz polling no servidor)
+├── server.py        ← Backend Python (Flask) — o coração do sistema
+└── solicitacao.json ← Criado automaticamente quando usuário envia pedido
+```
+
+---
+
+## 🚀 Como Rodar
+
+### 1. Instalar dependências Python
+```bash
+pip install flask flask-cors
+```
+
+### 2. Iniciar o servidor
+```bash
+python server.py
+```
+Servidor sobe em `http://localhost:5000`
+
+### 3. Abrir a interface
+Abrir `index.html` no navegador. A página vai conectar ao servidor automaticamente.
+
+---
+
+## 🤖 Instruções para UiPath Studio
+
+### O robô precisa fazer DUAS coisas:
+
+#### 1. LER a solicitação
+Quando o usuário clica "Enviar Solicitação", o servidor cria um arquivo `solicitacao.json`:
+
+```json
+{
+  "timestamp": "26/06/2026 14:30:00",
+  "itens": [
+    {
+      "marca": "Dell",
+      "modelo": "Inspiron 15 3530",
+      "quantidade": 2,
+      "observacoes": "SSD 512GB, 16GB RAM"
+    }
+  ]
+}
+```
+
+O robô deve monitorar este arquivo e iniciar a pesquisa quando ele aparecer/atualizar.
+
+#### 2. ENVIAR os resultados
+Após pesquisar, o robô faz um **HTTP POST** para `http://localhost:5000/resultado` com este JSON:
+
+```json
+{
+  "status_robo": "Concluído",
+  "ultimo_log": "Pesquisa finalizada. 3 itens cotados com sucesso.",
+  "alerta_erro": null,
+  "performance_roi": {
+    "tempo_manual": 32,
+    "tempo_robo": 2.5,
+    "horas_poupadas": 29.5,
+    "economia_financeira_brl": 15420.00
+  },
+  "cotacoes": [
+    {
+      "item": "Notebook Corporativo",
+      "desc": "i7, 16GB RAM, 512GB SSD",
+      "qtd": 2,
+      "fornecedor": "Kabum",
+      "preco": 4500.00,
+      "link": "https://kabum.com.br"
+    }
+  ]
+}
+```
+
+No UiPath Studio, usar a activity **"HTTP Request"**:
+- Method: `POST`
+- URL: `http://localhost:5000/resultado`
+- Body format: `application/json`
+- Body: o JSON acima com os dados reais da pesquisa
+
+---
+
+## 🔄 Fluxo Completo
+
+```
+[Usuário preenche form] 
+    → POST /solicitacao → server.py salva solicitacao.json
+    
+[UiPath lê solicitacao.json]
+    → Pesquisa nos fornecedores
+    → POST /resultado → server.py atualiza estado
+    
+[Page faz GET /dados a cada 5s]
+    → Detecta mudança → Atualiza Dashboard ao vivo
+```
+
+---
+
+## 🧪 Testar sem o UiPath (para page)
+
+Simular resultado do robô manualmente com curl ou Postman:
+
+```bash
+curl -X POST http://localhost:5000/resultado \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status_robo": "Concluído",
+    "ultimo_log": "Pesquisa finalizada. Notebook encontrado na Kabum por R$ 4.500.",
+    "alerta_erro": null,
+    "performance_roi": {
+      "tempo_manual": 32,
+      "tempo_robo": 2.5,
+      "horas_poupadas": 29.5,
+      "economia_financeira_brl": 15420.00
+    },
+    "cotacoes": [
+      {
+        "item": "Notebook Dell",
+        "desc": "i7, 16GB RAM, 512GB SSD",
+        "qtd": 2,
+        "fornecedor": "Kabum",
+        "preco": 4500.00,
+        "link": "https://kabum.com.br"
+      }
+    ]
+  }'
+```
+
