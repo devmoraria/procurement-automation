@@ -2,7 +2,7 @@
 // script.js — Automação de Compras TI | Grupo 1
 // ─────────────────────────────────────────────
 
-const SERVER_URL = "http://localhost:5000";
+const SERVER_URL = "http://127.0.0.1:5000";
 
 // Histórico local
 const historicoLocal = [];
@@ -216,24 +216,13 @@ const FORNECEDORES_PADRAO = [
 function carregarConfiguracoes() {
     const cfg = JSON.parse(localStorage.getItem('config') || '{}');
 
-    // Dept
-    const dept = cfg.dept || 'Suprimentos de TI';
-    const inputDept = document.getElementById('input-dept');
-    if (inputDept) inputDept.value = dept;
-    const topbarDept = document.getElementById('topbar-dept-name');
-    if (topbarDept) topbarDept.textContent = dept;
-
-    // Valor/hora
-    const inputVH = document.getElementById('input-valor-hora');
-    if (inputVH) inputVH.value = cfg.valorHora || 90;
-
     // Fornecedores
     const selecionados = cfg.fornecedores || ['kabum','pichau','terabyte','amazon'];
     const grid = document.getElementById('fornecedores-grid');
     if (grid) {
         grid.innerHTML = FORNECEDORES_PADRAO.map(f => `
             <label class="forn-chip ${selecionados.includes(f.id) ? 'selected' : ''}" data-id="${f.id}">
-                <input type="checkbox" ${selecionados.includes(f.id) ? 'checked' : ''} onchange="toggleFornecedor(this)">
+                <input type="checkbox" ${selecionados.includes(f.id) ? 'checked' : ''} onchange="toggleFornecedor(this); salvarConfiguracoes()">
                 ${f.nome}
             </label>
         `).join('');
@@ -245,27 +234,18 @@ function toggleFornecedor(checkbox) {
 }
 
 function salvarConfiguracoes() {
-    const dept     = document.getElementById('input-dept').value.trim() || 'Suprimentos de TI';
-    const valorHora= parseFloat(document.getElementById('input-valor-hora').value) || 90;
+    // Pega apenas os fornecedores selecionados na tela
     const fornSelecionados = [...document.querySelectorAll('.forn-chip input:checked')]
                               .map(cb => cb.closest('.forn-chip').dataset.id);
 
-    const cfg = { dept, valorHora, fornecedores: fornSelecionados };
+    // Salva no localStorage mantendo valores fixos para o departamento e valor/hora
+    // assim o PDF e o histórico continuam funcionando sem quebrar
+    const cfg = { 
+        dept: 'Suprimentos de TI', 
+        valorHora: 90, 
+        fornecedores: fornSelecionados 
+    };
     localStorage.setItem('config', JSON.stringify(cfg));
-
-    // Aplica imediatamente
-    document.getElementById('topbar-dept-name').textContent = dept;
-
-    // Feedback visual no botão
-    const btn = document.getElementById('btn-salvar-config');
-    const originalHTML = btn.innerHTML;
-    btn.innerHTML = '<i class="fa-solid fa-check"></i> ' + (currentLang === 'en' ? 'Saved!' : 'Salvo!');
-    btn.style.background = 'linear-gradient(135deg, #137333, #0a4d25)';
-    setTimeout(() => {
-        btn.innerHTML = originalHTML;
-        btn.style.background = '';
-        applyTranslations();
-    }, 2000);
 }
 
 // ─── Navegação Sidebar ────────────────────────
@@ -734,7 +714,6 @@ function positionSpotlight(selector) {
     spotlight.style.width  = (rect.width  + pad * 2) + 'px';
     spotlight.style.height = (rect.height + pad * 2) + 'px';
 
-    // Posiciona tooltip à direita do elemento destacado (ou abaixo se não couber)
     const tooltipW   = 300;
     const tooltipH   = 200;
     const gap        = 18;
@@ -744,12 +723,30 @@ function positionSpotlight(selector) {
     let left = rect.right + gap;
     let top  = rect.top;
 
-    // Não sai pela direita
-    if (left + tooltipW > vw - 8) left = rect.left - tooltipW - gap;
-    // Não sai por baixo
-    if (top + tooltipH > vh - 8)  top  = vh - tooltipH - 8;
-    // Não sai por cima
-    if (top < 8) top = 8;
+    // ─── AJUSTE INTELIGENTE DE POSIÇÃO ─────────────────────────────
+    // Se o tooltip sumir pela direita ou se o alvo for na sidebar esquerda, 
+    // joga o tooltip para a direita, mas garante que ele não saia da tela.
+    if (left + tooltipW > vw - 15) {
+        // Tenta jogar para a esquerda do elemento
+        left = rect.left - tooltipW - gap;
+        
+        // Se mesmo à esquerda ele sair da tela (telas muito pequenas/mobile)
+        // posiciona abaixo ou acima do elemento de forma centralizada
+        if (left < 15) {
+            left = Math.max(15, rect.left + (rect.width / 2) - (tooltipW / 2));
+            top = rect.bottom + gap;
+        }
+    }
+
+    // Não deixa o limite esquerdo ser menor que a margem de segurança
+    if (left < 15) left = 15;
+    // Não deixa sair pelo limite da direita da tela
+    if (left + tooltipW > vw - 15) left = vw - tooltipW - 15;
+
+    // Ajustes verticais (para não sumir no topo ou no rodapé)
+    if (top + tooltipH > vh - 15)  top  = vh - tooltipH - 15;
+    if (top < 15) top = 15;
+    // ───────────────────────────────────────────────────────────────
 
     tooltip.style.left      = left + 'px';
     tooltip.style.top       = top  + 'px';
