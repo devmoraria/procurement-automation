@@ -48,7 +48,6 @@ colecao_estado       = db["estado_atual"]
 colecao_solicitacoes = db["pedidos_entrada"]
 colecao_resultados   = db["cotacoes_resultado"]
 
-# Chave fixa do documento único de estado (evita duplicidade/ambiguidade no update_one({}))
 ESTADO_ID = "painel_principal"
 
 
@@ -96,14 +95,11 @@ def receber_resultado():
     ultima_atualizacao = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     ultimo_log = dados.get("ultimo_log", f"Dados recebidos às {datetime.now().strftime('%H:%M:%S')}")
 
-    # Garante que cada cotação recebida tem o campo "status".
-    # Se o robô não enviar, assume "completo" (já pesquisado).
     cotacoes = dados.get("cotacoes", [])
     for cotacao in cotacoes:
         if "status" not in cotacao:
             cotacao["status"] = "completo"
 
-    # Campos para atualizar no painel
     update_fields = {
         "status_robo":        dados.get("status_robo", "Atualizado pelo robô"),
         "ultimo_log":         ultimo_log,
@@ -116,15 +112,13 @@ def receber_resultado():
         for k, v in dados["performance_roi"].items():
             update_fields[f"performance_roi.{k}"] = v
 
-    # Atualiza o painel (chave fixa, com upsert por segurança)
     colecao_estado.update_one({"_id": ESTADO_ID}, {"$set": update_fields}, upsert=True)
 
-    # Salva histórico acumulativo em cotacoes_resultado
     colecao_resultados.insert_one({
-        "timestamp":    ultima_atualizacao,
-        "status_robo":  update_fields["status_robo"],
-        "ultimo_log":   ultimo_log,
-        "cotacoes":     cotacoes,
+        "timestamp":     ultima_atualizacao,
+        "status_robo":   update_fields["status_robo"],
+        "ultimo_log":    ultimo_log,
+        "cotacoes":      cotacoes,
         "performance_roi": dados.get("performance_roi", {})
     })
 
@@ -144,8 +138,6 @@ def receber_solicitacao():
 
     ultima_atualizacao = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
-    # Cria cotações iniciais com status "pendente" para cada item solicitado.
-    # O robô vai atualizar para "completo" conforme pesquisa cada um.
     cotacoes_pendentes = [
         {
             "item": f"{item.get('marca', '')} {item.get('modelo', '')}".strip(),
@@ -154,27 +146,28 @@ def receber_solicitacao():
             "fornecedor": "",
             "preco": None,
             "link": "",
-            "status": "pendente"   # <-- campo novo
+            "status": "pendente"
         }
         for item in dados["itens"]
     ]
 
-    # Atualiza status do painel para "Em execução" (chave fixa, com upsert por segurança)
+    # Atualiza painel — inclui fornecedores_prioritarios para o robô consultar via GET /dados
     colecao_estado.update_one({"_id": ESTADO_ID}, {"$set": {
-        "status_robo":        "Em execução",
-        "ultimo_log":         f"Nova solicitação recebida às {datetime.now().strftime('%H:%M:%S')}. Iniciando pesquisa...",
-        "alerta_erro":        None,
-        "ultima_atualizacao": ultima_atualizacao,
-        "cotacoes":           cotacoes_pendentes   # exibe pendentes no dashboard imediatamente
+        "status_robo":              "Em execução",
+        "ultimo_log":               f"Nova solicitação recebida às {datetime.now().strftime('%H:%M:%S')}. Iniciando pesquisa...",
+        "alerta_erro":              None,
+        "ultima_atualizacao":       ultima_atualizacao,
+        "cotacoes":                 cotacoes_pendentes,
     }}, upsert=True)
 
-    # Salva histórico acumulativo em pedidos_entrada
+    # Salva histórico — inclui fornecedores para rastreabilidade
     colecao_solicitacoes.insert_one({
         "timestamp": ultima_atualizacao,
         "itens":     dados["itens"]
     })
 
     print(f"[{ultima_atualizacao}] Pedido salvo em pedidos_entrada: {len(dados['itens'])} item(s)")
+
     return jsonify({"ok": True, "mensagem": f"{len(dados['itens'])} item(s) enviados para o robô"}), 200
 
 
@@ -185,8 +178,8 @@ def receber_solicitacao():
 def status():
     estado = colecao_estado.find_one({"_id": ESTADO_ID}, {"_id": 0})
     return jsonify({
-        "servidor":          "online",
-        "mongodb":           "equipamentos_cotacao",
+        "servidor":           "online",
+        "mongodb":            "equipamentos_cotacao",
         "ultima_atualizacao": estado.get("ultima_atualizacao") if estado else None
     })
 
