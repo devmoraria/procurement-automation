@@ -508,25 +508,8 @@ async function carregarDadosAutomacao() {
         const dados = await resposta.json();
         appendLog(`status_robo: ${dados.status_robo} | cotacoes: ${dados.cotacoes?.length ?? 0} | log: ${dados.ultimo_log}`);
 
-        const novasCotacoes = JSON.stringify(dados.cotacoes);
-        const logMudou = (dados.ultimo_log !== ultimoLog);
-        const cotacoesMudaram = (novasCotacoes !== ultimasCotacoes);
-
-        // 2. Só atualiza se algo mudou
-        if (logMudou || cotacoesMudaram) {
-            
-            // Se o log mudou, avisa o usuário
-            if (logMudou) {
-                appendLog("Log mudou — atualizando dashboard...");
-            }
-            
-            // Atualiza as variáveis de estado para as próximas verificações
-            ultimoLog = dados.ultimo_log;
-            ultimasCotacoes = novasCotacoes;
-            
-            // 3. Executa a renderização da tabela
-            atualizarTabela(dados.cotacoes); 
-        }
+        if (dados.ultimo_log !== ultimoLog) {
+            appendLog("Log mudou — atualizando dashboard...");
 
 
             if (dados.alerta_erro) {
