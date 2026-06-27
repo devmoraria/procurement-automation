@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+    <link rel="icon" type="image/x-icon" href="favicon.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automação de Compras — Copa do Mundo BR</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ══ Tour Overlay ══ -->
+<div id="tour-overlay" class="tour-overlay">
+    <div id="tour-spotlight" class="tour-spotlight"></div>
+    <div id="tour-tooltip" class="tour-tooltip">
+        <div class="tour-step-label" id="tour-step-label"></div>
+        <div class="tour-title"      id="tour-title"></div>
+        <div class="tour-desc"       id="tour-desc"></div>
+        <div class="tour-footer">
+            <button class="btn btn-secondary" onclick="tourSkip()" id="tour-skip-btn">Pular tour</button>
+            <div class="tour-dots" id="tour-dots"></div>
+            <button class="btn btn-primary"   onclick="tourNext()" id="tour-next-btn">Próximo</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ Sidebar ══ -->
+<div class="sidebar">
+    <div>
+        <div class="sidebar-brand">
+            <i class="fa-solid fa-robot"></i>
+            <span data-i18n="brand">Automação de Compras</span>
+        </div>
+        <ul class="sidebar-menu">
+            <li id="menu-dashboard" class="sidebar-item active" onclick="switchView('dashboard')">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span data-i18n="menu.dashboard">Dashboard</span>
+            </li>
+            <li id="menu-nova-solicitacao" class="sidebar-item" onclick="switchView('nova-solicitacao')">
+                <i class="fa-solid fa-file-circle-plus"></i>
+                <span data-i18n="menu.nova">Nova Solicitação</span>
+            </li>
+            <li id="menu-historico" class="sidebar-item" onclick="switchView('historico')">
+                <i class="fa-solid fa-history"></i>
+                <span data-i18n="menu.historico">Histórico</span>
+            </li>
+            <li id="menu-configuracoes" class="sidebar-item" onclick="switchView('configuracoes')">
+                <i class="fa-solid fa-gear"></i>
+                <span data-i18n="menu.config">Configurações</span>
+            </li>
+        </ul>
+    </div>
+    <div class="sidebar-footer">🏆 Copa do Mundo 2026</div>
+</div>
+
+<!-- ══ Main ══ -->
+<div class="main-content">
+    <div class="topbar">
+        <div class="topbar-title">
+            <span class="topbar-flag">🇧🇷</span>
+            <span data-i18n="topbar.title">Painel de Controle</span> — <span id="topbar-dept-name">Suprimentos de TI</span>
+        </div>
+        <div class="topbar-right">
+            <div class="lang-toggle">
+                <button id="pill-pt" class="lang-pill active" onclick="setLang('pt')">PT</button>
+                <button id="pill-en" class="lang-pill"        onclick="setLang('en')">EN</button>
+            </div>
+            <div class="topbar-badge">
+                <i class="fa-solid fa-circle" style="color:#00ff88;font-size:8px;"></i>
+                <span data-i18n="topbar.badge">Sistema Ativo</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-body">
+
+        <!-- ══ DASHBOARD ══ -->
+        <div id="view-dashboard" class="view-section active">
+            <div class="section-header">
+                <h2 data-i18n="dash.h2">Métricas de ROI e Economia</h2>
+                <p  data-i18n="dash.p">Resultados financeiros consolidados em tempo real pelo robô UiPath.</p>
+            </div>
+
+            <div style="margin-bottom:25px;">
+                <button class="btn btn-outline" onclick="exportarPDF()">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <span data-i18n="dash.export">Exportar Relatório PDF</span>
+                </button>
+            </div>
+
+            <div class="card-panel" style="margin-bottom:25px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <h3 style="font-size:14px;" data-i18n="dash.robot.title">Monitoramento do Robô UiPath</h3>
+                    <span id="robot-status" class="status-badge">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i> Conectando...
+                    </span>
+                </div>
+                <div id="robot-console" class="robot-console">[SISTEMA] Interface carregada. Conectando ao servidor...</div>
+            </div>
+
+            <div class="cards-kpi">
+                <div class="kpi-card">
+                    <h4 data-i18n="kpi.economia">Economia Total (ROI)</h4>
+                    <div id="kpi-economia" class="value green">—</div>
+                </div>
+                <div class="kpi-card">
+                    <h4 data-i18n="kpi.horas">Horas Poupadas / Mês</h4>
+                    <div id="kpi-horas-poupadas" class="value">—</div>
+                </div>
+                <div class="kpi-card">
+                    <h4 data-i18n="kpi.manual">Processo Manual</h4>
+                    <div id="kpi-manual" class="value" style="color:#dc3545;">—</div>
+                </div>
+                <div class="kpi-card">
+                    <h4 data-i18n="kpi.robo">Com UiPath</h4>
+                    <div id="kpi-robo" class="value" style="color:#002776;">—</div>
+                </div>
+            </div>
+
+            <div class="chart-row">
+                <div class="card-panel">
+                    <h3 style="font-size:14px;margin-bottom:15px;" data-i18n="chart.title">Eficiência de Tempo</h3>
+                    <div style="position:relative;height:200px;width:100%">
+                        <canvas id="dashboardChart"></canvas>
+                    </div>
+                </div>
+                <div class="card-panel">
+                    <h3 style="font-size:14px;margin-bottom:15px;" data-i18n="table.title">Melhores Ofertas Encontradas</h3>
+                    <div class="table-responsive">
+                        <table class="data-table" id="tabela-cotacoes">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="col.item">Item</th>
+                                    <th data-i18n="col.spec">Especificação</th>
+                                    <th data-i18n="col.qty">Qtd</th>
+                                    <th data-i18n="col.supplier">Fornecedor</th>
+                                    <th data-i18n="col.price">Menor Preço</th>
+                                    <th data-i18n="col.status">Status</th>
+                                    <th data-i18n="col.compare"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboard-table-body">
+                                <tr>
+                                    <td colspan="7" style="text-align:center;color:#999;padding:20px;">
+                                        Aguardando resultados do robô...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ NOVA SOLICITAÇÃO ══ -->
+        <div id="view-nova-solicitacao" class="view-section">
+            <div class="section-header">
+                <h2 data-i18n="nova.h2">Solicitação de Equipamentos</h2>
+                <p  data-i18n="nova.p">Preencha a tabela com os itens. O robô pesquisará os melhores preços automaticamente.</p>
+            </div>
+
+            <div class="grid-layout">
+                <div class="card-panel">
+                    <div class="table-responsive-form">
+                        <table class="input-table" id="dynamic-input-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:5%"  data-i18n="col.num">#</th>
+                                    <th style="width:20%" data-i18n="col.brand">Marca</th>
+                                    <th style="width:30%" data-i18n="col.model">Modelo</th>
+                                    <th style="width:10%" data-i18n="col.qty2">Qtd</th>
+                                    <th style="width:30%" data-i18n="col.specs">Especificações</th>
+                                    <th style="width:5%"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="input-table-body">
+                                <!-- rows injected by addNewRow() on load -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-outline" onclick="addNewRow()">
+                            <i class="fa-solid fa-plus"></i>
+                            <span data-i18n="btn.addrow">Adicionar linha</span>
+                        </button>
+                        <div style="display:flex;gap:10px;">
+                            <button class="btn btn-secondary" onclick="clearForm()" data-i18n="btn.clear">Limpar</button>
+                            <button id="btn-enviar" class="btn btn-primary" onclick="enviarSolicitacao()">
+                                <i class="fa-solid fa-paper-plane"></i>
+                                <span data-i18n="btn.send">Enviar Solicitação</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-panel">
+                    <div class="widget-info">
+                        <h3 data-i18n="widget.title">O que acontece depois?</h3>
+                        <ul class="steps-list">
+                            <li class="step-item"><span class="step-num">1</span><span data-i18n="step1">Os itens são enviados ao servidor.</span></li>
+                            <li class="step-item"><span class="step-num">2</span><span data-i18n="step2">O robô UiPath lê e inicia a pesquisa.</span></li>
+                            <li class="step-item"><span class="step-num">3</span><span data-i18n="step3">Cada fornecedor é consultado automaticamente.</span></li>
+                            <li class="step-item"><span class="step-num">4</span><span data-i18n="step4">Os resultados são enviados de volta.</span></li>
+                            <li class="step-item"><span class="step-num">5</span><span data-i18n="step5">O Dashboard atualiza em tempo real.</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ JSON Format Panel ══ -->
+            <div class="card-panel json-format-panel" id="json-format-panel" style="margin-bottom:24px;">
+                <div class="json-format-header" onclick="toggleJsonPanel()">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <i class="fa-solid fa-code" style="color:var(--gold);font-size:15px;"></i>
+                        <span style="font-size:14px;font-weight:700;" data-i18n="json.title">Formato JSON — POST /resultado (UiPath → Servidor)</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span class="json-format-badge" data-i18n="json.badge">Referência para o Robô</span>
+                        <i class="fa-solid fa-chevron-down json-chevron" id="json-chevron"></i>
+                    </div>
+                </div>
+                <div id="json-format-body" class="json-format-body">
+                    <p class="json-format-desc" data-i18n="json.desc">
+                        O robô UiPath deve enviar um <strong>POST</strong> para <code>/resultado</code> com o corpo abaixo.
+                        Os campos <code>status</code> de cada cotação são preenchidos automaticamente pelo servidor se omitidos.
+                    </p>
+                    <div class="json-fields-grid">
+                        <div class="json-field-card">
+                            <div class="json-field-key">status_robo <span class="json-type">string</span></div>
+                            <div class="json-field-desc" data-i18n="json.f.status_robo">Ex: "Concluído" — aparece no badge de monitoramento.</div>
+                        </div>
+                        <div class="json-field-card">
+                            <div class="json-field-key">ultimo_log <span class="json-type">string</span></div>
+                            <div class="json-field-desc" data-i18n="json.f.ultimo_log">Mensagem exibida no console do robô em tempo real.</div>
+                        </div>
+                        <div class="json-field-card">
+                            <div class="json-field-key">alerta_erro <span class="json-type">string | null</span></div>
+                            <div class="json-field-desc" data-i18n="json.f.alerta_erro">Null se sem erros. Texto do erro se houver falha.</div>
+                        </div>
+                        <div class="json-field-card">
+                            <div class="json-field-key">performance_roi <span class="json-type">object</span></div>
+                            <div class="json-field-desc" data-i18n="json.f.roi">tempo_manual, tempo_robo, horas_poupadas (em hrs).</div>
+                        </div>
+                    </div>
+                    <div class="json-cot-title" data-i18n="json.cot.title">Estrutura de cada cotação em <code>cotacoes[]</code>:</div>
+                    <div class="json-block-wrap">
+                        <button class="json-copy-btn" onclick="copiarJson()" id="json-copy-btn">
+                            <i class="fa-solid fa-copy"></i> <span data-i18n="json.copy">Copiar</span>
+                        </button>
+                        <pre class="json-block" id="json-example-block">{
+  "status_robo": "Concluído",
+  "ultimo_log": "Pesquisa finalizada com sucesso.",
+  "alerta_erro": null,
+  "performance_roi": {
+    "tempo_manual": 32,
+    "tempo_robo": 2.5,
+    "horas_poupadas": 29.5,
+    "economia_financeira_brl": 15420.00
+  },
+  "cotacoes": [
+    {
+      "item": "Dell ThinkPad E14",
+      "desc": "16GB RAM, SSD 512GB",
+      "qtd": 2,
+      "fornecedores": {
+        "kabum":  { "preco": 4599.90, "link": "https://kabum.com.br/..." },
+        "pichau": { "preco": 4799.00, "link": "https://pichau.com.br/..." },
+        "amazon": { "preco": 4850.00, "link": "https://amazon.com.br/..." }
+      }
+    },
+    {
+      "item": "HP Monitor 24\"",
+      "desc": "Full HD, IPS",
+      "qtd": 1,
+      "status": "sem_resultado",
+      "fornecedores": {}
+    }
+  ]
+}</pre>
+                    </div>
+                    <div class="json-notes-row">
+                        <div class="json-note"><i class="fa-solid fa-circle-info"></i> <span data-i18n="json.note1">O campo <code>status</code> por cotação é opcional — o servidor detecta automaticamente.</span></div>
+                        <div class="json-note"><i class="fa-solid fa-circle-info"></i> <span data-i18n="json.note2">Chaves de fornecedor: <code>kabum</code>, <code>pichau</code>, <code>terabyte</code>, <code>amazon</code>, <code>mercadolivre</code>, <code>magazineluiza</code>, <code>dell</code>, <code>lenovo</code>.</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="fluxo-title" data-i18n="fluxo.title">Fluxo do Processo</div>
+            <div class="fluxo-scroll-wrapper">
+                <div class="fluxo-container">
+                    <div class="fluxo-card active">
+                        <i class="fa-solid fa-keyboard" style="color:var(--accent-blue)"></i>
+                        <div class="step-title" data-i18n="fluxo1.title">1. Entrada de Dados</div>
+                        <p data-i18n="fluxo1.p">Funcionário preenche os itens na interface.</p>
+                    </div>
+                    <div class="fluxo-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                    <div class="fluxo-card">
+                        <i class="fa-solid fa-server" style="color:#e67e22"></i>
+                        <div class="step-title" data-i18n="fluxo2.title">2. Servidor Python</div>
+                        <p data-i18n="fluxo2.p">server.py recebe e salva a solicitação.</p>
+                    </div>
+                    <div class="fluxo-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                    <div class="fluxo-card">
+                        <i class="fa-solid fa-robot" style="color:var(--accent-blue)"></i>
+                        <div class="step-title" data-i18n="fluxo3.title">3. Robô UiPath</div>
+                        <p data-i18n="fluxo3.p">Lê a solicitação e pesquisa nos fornecedores.</p>
+                    </div>
+                    <div class="fluxo-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                    <div class="fluxo-card">
+                        <i class="fa-solid fa-gears" style="color:#137333"></i>
+                        <div class="step-title" data-i18n="fluxo4.title">4. Envio do Resultado</div>
+                        <p data-i18n="fluxo4.p">UiPath faz POST dos dados ao servidor.</p>
+                    </div>
+                    <div class="fluxo-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                    <div class="fluxo-card">
+                        <i class="fa-solid fa-chart-line" style="color:#007200"></i>
+                        <div class="step-title" data-i18n="fluxo5.title">5. Dashboard ao Vivo</div>
+                        <p data-i18n="fluxo5.p">Tela atualiza automaticamente com os preços.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ HISTÓRICO ══ -->
+        <div id="view-historico" class="view-section">
+            <div class="section-header">
+                <h2 data-i18n="hist.h2">Histórico de Solicitações</h2>
+                <p  data-i18n="hist.p">Consulte o status das automações executadas.</p>
+            </div>
+            <div class="card-panel">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="col.datetime">Data/Hora</th>
+                                <th data-i18n="col.items">Itens</th>
+                                <th data-i18n="col.hstatus">Status</th>
+                                <th data-i18n="col.by">Enviado por</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historico-body">
+                            <tr>
+                                <td colspan="4" style="text-align:center;color:#999;padding:20px;">
+                                    Nenhuma solicitação enviada ainda.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ CONFIGURAÇÕES ══ -->
+        <div id="view-configuracoes" class="view-section">
+            <div class="section-header">
+                <h2 data-i18n="config.h2">Configurações</h2>
+                <p  data-i18n="config.p">Personalize o sistema conforme suas preferências.</p>
+            </div>
+
+            <div class="settings-group">
+                <div class="settings-group-title" data-i18n="config.appearance">Aparência</div>
+                <div class="settings-row">
+                    <div class="settings-label" data-i18n="config.darkmode">Modo Escuro</div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-dark" onchange="toggleDarkMode(this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-label" data-i18n="config.lang">Idioma / Language</div>
+                    <div class="lang-pills-settings">
+                        <button id="settings-pill-pt" class="lang-pill active" onclick="setLang('pt')">🇧🇷 PT</button>
+                        <button id="settings-pill-en" class="lang-pill"        onclick="setLang('en')">🇺🇸 EN</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-group" style="margin-top:24px;">
+                <div class="settings-group-title" data-i18n="config.tour">Tour Guiado</div>
+                <div class="settings-row">
+                    <div class="settings-label" data-i18n="config.tour.label">Reiniciar o tour de boas-vindas</div>
+                    <button class="btn btn-outline" onclick="reiniciarTour()">
+                        <i class="fa-solid fa-compass"></i>
+                        <span data-i18n="btn.tour">Iniciar Tour</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /content-body -->
+</div><!-- /main-content -->
+
+<script src="script.js"></script>
+</body>
+</html>
