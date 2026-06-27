@@ -191,8 +191,6 @@ function applyTranslations() {
         const val = t(key);
         if (val) el.textContent = val;
     });
-
-    // Sync lang pill UI
     ['pt','en'].forEach(lang => {
         const pill = document.getElementById('pill-' + lang);
         const settingsPill = document.getElementById('settings-pill-' + lang);
@@ -205,7 +203,6 @@ function setLang(lang) {
     currentLang = lang;
     localStorage.setItem('lang', lang);
     applyTranslations();
-    // Re-render histórico para aplicar textos traduzidos
     renderizarHistorico();
 }
 
@@ -213,27 +210,24 @@ function setLang(lang) {
 function toggleDarkMode(enabled) {
     document.documentElement.setAttribute('data-theme', enabled ? 'dark' : 'light');
     localStorage.setItem('darkMode', enabled ? '1' : '0');
-    // Sincroniza o toggle no checkbox
     const tog = document.getElementById('toggle-dark');
     if (tog) tog.checked = enabled;
 }
 
 // ─── Configurações ────────────────────────────
 const FORNECEDORES_PADRAO = [
-    { id: 'kabum',       nome: 'KaBuM!' },
-    { id: 'pichau',      nome: 'Pichau' },
-    { id: 'terabyte',    nome: 'Terabyte Shop' },
-    { id: 'amazon',      nome: 'Amazon BR' },
-    { id: 'mercadolivre',nome: 'Mercado Livre' },
+    { id: 'kabum',        nome: 'KaBuM!' },
+    { id: 'pichau',       nome: 'Pichau' },
+    { id: 'terabyte',     nome: 'Terabyte Shop' },
+    { id: 'amazon',       nome: 'Amazon BR' },
+    { id: 'mercadolivre', nome: 'Mercado Livre' },
     { id: 'magazineluiza',nome: 'Magazine Luiza' },
-    { id: 'dell',        nome: 'Dell Direct' },
-    { id: 'lenovo',      nome: 'Lenovo Store' },
+    { id: 'dell',         nome: 'Dell Direct' },
+    { id: 'lenovo',       nome: 'Lenovo Store' },
 ];
 
 function carregarConfiguracoes() {
     const cfg = JSON.parse(localStorage.getItem('config') || '{}');
-
-    // Fornecedores
     const selecionados = cfg.fornecedores || ['kabum','pichau','terabyte','amazon'];
     const grid = document.getElementById('fornecedores-grid');
     if (grid) {
@@ -253,12 +247,7 @@ function toggleFornecedor(checkbox) {
 function salvarConfiguracoes() {
     const fornSelecionados = [...document.querySelectorAll('.forn-chip input:checked')]
                               .map(cb => cb.closest('.forn-chip').dataset.id);
-
-    const cfg = { 
-        dept: 'Suprimentos de TI', 
-        valorHora: 90, 
-        fornecedores: fornSelecionados 
-    };
+    const cfg = { dept: 'Suprimentos de TI', valorHora: 90, fornecedores: fornSelecionados };
     localStorage.setItem('config', JSON.stringify(cfg));
 }
 
@@ -266,10 +255,8 @@ function salvarConfiguracoes() {
 function switchView(viewId) {
     document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-    
     const targetView = document.getElementById('view-' + viewId);
     const targetMenu = document.getElementById('menu-' + viewId);
-    
     if (targetView) targetView.classList.add('active');
     if (targetMenu) targetMenu.classList.add('active');
 }
@@ -345,7 +332,9 @@ async function enviarSolicitacao() {
             });
             renderizarHistorico();
             switchView('dashboard');
+            // Força re-renderização da tabela no próximo poll
             ultimoLog = "";
+            ultimasCotacoes = "";
             appendLog(`✅ ${resultado.mensagem} Robô iniciando pesquisa...`);
         } else {
             alert("Erro: " + resultado.erro);
@@ -419,19 +408,19 @@ function renderizarGrafico(manual, robo) {
 
 // ─── KPI Cards ───────────────────────────────
 function atualizarKPIs(roi) {
-    const cfg        = JSON.parse(localStorage.getItem('config') || '{}');
-    const valorHora  = parseFloat(cfg.valorHora) || 90;
-    const economia   = (roi.horas_poupadas || 0) * valorHora;
+    const cfg       = JSON.parse(localStorage.getItem('config') || '{}');
+    const valorHora = parseFloat(cfg.valorHora) || 90;
+    const economia  = (roi.horas_poupadas || 0) * valorHora;
 
-    const elEcon = document.getElementById('kpi-economia');
-    const elHoras = document.getElementById('kpi-horas-poupadas');
+    const elEcon   = document.getElementById('kpi-economia');
+    const elHoras  = document.getElementById('kpi-horas-poupadas');
     const elManual = document.getElementById('kpi-manual');
-    const elRobo = document.getElementById('kpi-robo');
+    const elRobo   = document.getElementById('kpi-robo');
 
-    if (elEcon) elEcon.innerText = `R$ ${economia.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-    if (elHoras) elHoras.innerText = `${roi.horas_poupadas} hrs`;
+    if (elEcon)   elEcon.innerText   = `R$ ${economia.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    if (elHoras)  elHoras.innerText  = `${roi.horas_poupadas} hrs`;
     if (elManual) elManual.innerText = `${roi.tempo_manual} hrs/mês`;
-    if (elRobo) elRobo.innerText = `${roi.tempo_robo} hrs/mês`;
+    if (elRobo)   elRobo.innerText   = `${roi.tempo_robo} hrs/mês`;
 }
 
 // ─── Badge status ─────────────────────────────
@@ -454,7 +443,6 @@ function badgeStatus(status) {
     </span>`;
 }
 
-// Nomes de exibição para cada chave de fornecedor retornada pelo robô
 const NOMES_FORNECEDORES = {
     kabum:        'KaBuM!',
     pichau:       'Pichau',
@@ -470,13 +458,12 @@ function nomeFornecedor(chave) {
     return NOMES_FORNECEDORES[chave] || chave;
 }
 
-// ─── Popover de comparação de ofertas (tabela do dashboard) ──
+// ─── Popover ──────────────────────────────────
 function toggleOfertaPopover(event, popoverId) {
     event.stopPropagation();
     const popover = document.getElementById(popoverId);
     if (!popover) return;
     const jaAberto = popover.classList.contains('open');
-    // Fecha qualquer outro popover aberto antes de abrir o novo
     document.querySelectorAll('.cot-popover.open').forEach(p => p.classList.remove('open'));
     document.querySelectorAll('.cot-mais-ofertas.open').forEach(b => b.classList.remove('open'));
     if (!jaAberto) {
@@ -494,21 +481,19 @@ document.addEventListener('click', (e) => {
 
 // ─── Polling ─────────────────────────────────
 let ultimoLog = "";
+let ultimasCotacoes = "";
 
 async function carregarDadosAutomacao() {
     const statusBadge = document.getElementById('robot-status');
     if (!statusBadge) return;
-    
+
     try {
-        appendLog("🔄 Consultando servidor...");
         const resposta = await fetch(`${SERVER_URL}/dados`);
-        appendLog(`📡 Servidor respondeu: ${resposta.status}`);
         const dados = await resposta.json();
-        appendLog(`📦 status_robo: ${dados.status_robo} | cotacoes: ${dados.cotacoes?.length ?? 0} | log: ${dados.ultimo_log}`);
 
+        // Sempre atualiza badge, log e KPIs se o log mudou
         if (dados.ultimo_log !== ultimoLog) {
-            appendLog("🔁 Log mudou — atualizando dashboard...");
-
+            ultimoLog = dados.ultimo_log;
 
             if (dados.alerta_erro) {
                 statusBadge.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ${currentLang === 'en' ? 'Error detected' : 'Erro detectado'}`;
@@ -526,6 +511,12 @@ async function carregarDadosAutomacao() {
             appendLog(dados.ultimo_log);
             atualizarKPIs(dados.performance_roi);
             renderizarGrafico(dados.performance_roi.tempo_manual, dados.performance_roi.tempo_robo);
+        }
+
+        // Só re-renderiza a tabela se as cotações mudaram
+        const cotacoesStr = JSON.stringify(dados.cotacoes);
+        if (cotacoesStr !== ultimasCotacoes) {
+            ultimasCotacoes = cotacoesStr;
 
             const tbody = document.getElementById('dashboard-table-body');
             if (tbody) {
@@ -533,12 +524,11 @@ async function carregarDadosAutomacao() {
 
                 if (dados.cotacoes && dados.cotacoes.length > 0) {
                     dados.cotacoes.forEach((cotacao, idx) => {
-                        const nomeItem     = cotacao.item || '';
+                        const nomeItem      = cotacao.item || '';
                         const especificacao = cotacao.desc || '';
-                        const quantidade   = cotacao.qtd || 1;
-                        const statusItem   = (cotacao.status || "pendente").toLowerCase();
+                        const quantidade    = cotacao.qtd || 1;
+                        const statusItem    = (cotacao.status || "pendente").toLowerCase();
 
-                        // Monta lista de ofertas ordenada por preço
                         const fornecedores = cotacao.fornecedores || {};
                         const ofertas = Object.keys(fornecedores)
                             .map(chave => ({
@@ -550,11 +540,10 @@ async function carregarDadosAutomacao() {
                             .filter(o => o.preco != null)
                             .sort((a, b) => a.preco - b.preco);
 
-                        const melhor      = ofertas[0] || null;
-                        const maiorPreco  = ofertas.length ? ofertas[ofertas.length - 1].preco : 0;
-                        const temCompar   = ofertas.length >= 2;
+                        const melhor     = ofertas[0] || null;
+                        const maiorPreco = ofertas.length ? ofertas[ofertas.length - 1].preco : 0;
+                        const temCompar  = ofertas.length >= 2;
 
-                        // ── Coluna Fornecedor (só melhor + link) ──
                         let fornecedorExibido;
                         if (melhor) {
                             const linkIcon = melhor.link
@@ -572,12 +561,10 @@ async function carregarDadosAutomacao() {
                             }</span>`;
                         }
 
-                        // ── Menor preço exibido ──
                         const precoExibido = melhor
                             ? `<span class="cot-preco">R$ ${melhor.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>`
                             : `<span class="cot-preco-vazio">—</span>`;
 
-                        // ── Botão comparar ──
                         const btnCompar = temCompar
                             ? `<button class="btn-comparar" id="btn-comp-${idx}" onclick="toggleComparacao(${idx})">
                                    <i class="fa-solid fa-chart-bar"></i>
@@ -586,7 +573,6 @@ async function carregarDadosAutomacao() {
                                </button>`
                             : '';
 
-                        // ── Linha principal ──
                         const linhaClasse = statusItem === 'sem_resultado' ? 'cot-row-sem-resultado' : '';
                         tbody.innerHTML += `<tr class="cot-main-row ${linhaClasse}" id="cot-row-${idx}">
                             <td><div class="cot-item-nome">${nomeItem}</div></td>
@@ -598,25 +584,22 @@ async function carregarDadosAutomacao() {
                             <td>${btnCompar}</td>
                         </tr>`;
 
-                        // ── Linha de comparação (oculta por padrão) ──
                         if (temCompar) {
                             const melhorPreco = melhor.preco;
-
                             const barras = ofertas.map((o, i) => {
-                                const isMelhor   = i === 0;
-                                const pctBar     = maiorPreco > melhorPreco
+                                const isMelhor = i === 0;
+                                const pctBar   = maiorPreco > melhorPreco
                                     ? Math.round(30 + ((o.preco - melhorPreco) / (maiorPreco - melhorPreco)) * 70)
                                     : 100;
-                                const pctAcima   = isMelhor ? 0 : Math.round(((o.preco - melhorPreco) / melhorPreco) * 100);
-                                const economia   = maiorPreco - o.preco;
-                                const barColor   = isMelhor ? 'var(--green)'
+                                const pctAcima = isMelhor ? 0 : Math.round(((o.preco - melhorPreco) / melhorPreco) * 100);
+                                const barColor = isMelhor ? 'var(--green)'
                                     : pctAcima <= 5  ? '#e6a817'
                                     : pctAcima <= 15 ? '#d47200'
                                     :                  '#c5221f';
-                                const linkBtn    = o.link
+                                const linkBtn = o.link
                                     ? `<a class="comp-link-btn" href="${o.link}" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>`
                                     : '';
-                                const badge      = isMelhor
+                                const badge = isMelhor
                                     ? `<span class="comp-badge melhor">${currentLang === 'en' ? '✔ Best price' : '✔ Melhor preço'}</span>`
                                     : `<span class="comp-badge acima">+${pctAcima}%</span>`;
 
@@ -635,7 +618,7 @@ async function carregarDadosAutomacao() {
                                 </div>`;
                             }).join('');
 
-                            const econTotal = maiorPreco - melhorPreco;
+                            const econTotal = maiorPreco - melhor.preco;
                             const pctEcon   = Math.round((econTotal / maiorPreco) * 100);
                             const resumo    = `
                                 <div class="comp-resumo">
@@ -666,6 +649,7 @@ async function carregarDadosAutomacao() {
                 }
             }
         }
+
     } catch (err) {
         statusBadge.innerHTML = `<i class="fa-solid fa-plug-circle-xmark"></i> ${currentLang === 'en' ? 'Server offline' : 'Servidor offline'}`;
         statusBadge.style.cssText = "background:#fce8e6;color:#c5221f;";
@@ -702,16 +686,16 @@ function exportarPDF() {
     doc.setFontSize(13); doc.setFont('helvetica', 'bold');
     doc.text('Resumo Executivo', 15, 52);
 
-    const elEcon = document.getElementById('kpi-economia');
-    const elHoras = document.getElementById('kpi-horas-poupadas');
+    const elEcon   = document.getElementById('kpi-economia');
+    const elHoras  = document.getElementById('kpi-horas-poupadas');
     const elManual = document.getElementById('kpi-manual');
-    const elRobo = document.getElementById('kpi-robo');
+    const elRobo   = document.getElementById('kpi-robo');
 
     const kpis = [
-        { label: 'Economia Total (ROI)', valor: elEcon ? elEcon.innerText : 'R$ 0,00' },
-        { label: 'Horas Poupadas / Mês', valor: elHoras ? elHoras.innerText : '0 hrs' },
+        { label: 'Economia Total (ROI)', valor: elEcon   ? elEcon.innerText   : 'R$ 0,00' },
+        { label: 'Horas Poupadas / Mês', valor: elHoras  ? elHoras.innerText  : '0 hrs' },
         { label: 'Processo Manual',       valor: elManual ? elManual.innerText : '0 hrs/mês' },
-        { label: 'Com UiPath',            valor: elRobo ? elRobo.innerText : '0 hrs/mês' },
+        { label: 'Com UiPath',            valor: elRobo   ? elRobo.innerText   : '0 hrs/mês' },
     ];
 
     const cardW = 42, cardH = 22, gap = 4, startX = 15, startY = 57;
@@ -771,7 +755,7 @@ function exportarPDF() {
     doc.rect(0, pageH - 12, 210, 12, 'F');
     doc.setTextColor(...amarel);
     doc.setFontSize(8); doc.setFont('helvetica', 'bold');
-    doc.text(`🏆 Copa do Mundo 2026 — ${dept} | Grupo 1`, 15, pageH - 4);
+    doc.text(`Copa do Mundo 2026 — ${dept} | Grupo 1`, 15, pageH - 4);
 
     doc.save(`relatorio_cotacao_${new Date().toISOString().slice(0,10)}.pdf`);
 }
@@ -779,60 +763,46 @@ function exportarPDF() {
 // ─── TOUR GUIADO ─────────────────────────────
 const TOUR_STEPS = [
     {
-        target: '.sidebar-brand',
-        view:   null,
-        titlePt: 'Bem-vindo ao sistema! 👋',
-        titleEn: 'Welcome to the system! 👋',
-        descPt:  'Esta é a plataforma de Automação de Compras do Grupo 1, integrada ao UiPath. Vamos te guiar pelas principais funcionalidades.',
-        descEn:  'This is Group 1\'s Procurement Automation platform, integrated with UiPath. Let us guide you through the main features.',
+        target: '.sidebar-brand', view: null,
+        titlePt: 'Bem-vindo ao sistema! 👋', titleEn: 'Welcome to the system! 👋',
+        descPt:  'Esta é a plataforma de Automação de Compras do Grupo 1, integrada ao UiPath.',
+        descEn:  'This is Group 1\'s Procurement Automation platform, integrated with UiPath.',
     },
     {
-        target: '#menu-dashboard',
-        view:   'dashboard',
-        titlePt: 'Dashboard',
-        titleEn: 'Dashboard',
-        descPt:  'Acompanhe em tempo real as métricas de ROI, economia gerada e os resultados das cotações pesquisadas pelo robô.',
-        descEn:  'Track in real time the ROI metrics, savings generated, and the quotation results found by the robot.',
+        target: '#menu-dashboard', view: 'dashboard',
+        titlePt: 'Dashboard', titleEn: 'Dashboard',
+        descPt:  'Acompanhe em tempo real as métricas de ROI, economia gerada e os resultados das cotações.',
+        descEn:  'Track in real time the ROI metrics, savings generated, and quotation results.',
     },
     {
-        target: '.cards-kpi',
-        view:   'dashboard',
-        titlePt: 'Indicadores de Desempenho',
-        titleEn: 'Performance Indicators',
+        target: '.cards-kpi', view: 'dashboard',
+        titlePt: 'Indicadores de Desempenho', titleEn: 'Performance Indicators',
         descPt:  'Os KPIs mostram a economia financeira total, horas poupadas por mês e a comparação entre processo manual e automatizado.',
         descEn:  'KPIs show total financial savings, hours saved per month, and the comparison between manual and automated processes.',
     },
     {
-        target: '#menu-nova-solicitacao',
-        view:   'nova-solicitacao',
-        titlePt: 'Nova Solicitação',
-        titleEn: 'New Request',
-        descPt:  'Aqui você preenche os equipamentos necessários. O robô UiPath irá pesquisar os melhores preços em múltiplos fornecedores.',
-        descEn:  'Here you fill in the required equipment. The UiPath robot will search for the best prices across multiple suppliers.',
+        target: '#menu-nova-solicitacao', view: 'nova-solicitacao',
+        titlePt: 'Nova Solicitação', titleEn: 'New Request',
+        descPt:  'Aqui você preenche os equipamentos necessários. O robô UiPath irá pesquisar os melhores preços.',
+        descEn:  'Here you fill in the required equipment. The UiPath robot will search for the best prices.',
     },
     {
-        target: '#menu-historico',
-        view:   'historico',
-        titlePt: 'Histórico',
-        titleEn: 'History',
-        descPt:  'Consulte todas as solicitações já enviadas, com status e data de execução de cada automação.',
-        descEn:  'View all submitted requests, with status and execution date of each automation.',
+        target: '#menu-historico', view: 'historico',
+        titlePt: 'Histórico', titleEn: 'History',
+        descPt:  'Consulte todas as solicitações já enviadas, com status e data de execução.',
+        descEn:  'View all submitted requests, with status and execution date.',
     },
     {
-        target: '#menu-configuracoes',
-        view:   'configuracoes',
-        titlePt: 'Configurações',
-        titleEn: 'Settings',
-        descPt:  'Personalize o sistema: modo escuro, idioma, nome do departamento, valor/hora para ROI e fornecedores prioritários.',
-        descEn:  'Customize the system: dark mode, language, department name, hourly rate for ROI, and priority suppliers.',
+        target: '#menu-configuracoes', view: 'configuracoes',
+        titlePt: 'Configurações', titleEn: 'Settings',
+        descPt:  'Personalize o sistema: modo escuro, idioma, departamento e fornecedores prioritários.',
+        descEn:  'Customize the system: dark mode, language, department, and priority suppliers.',
     },
     {
-        target: '#json-format-panel',
-        view:   'dashboard',
-        titlePt: 'Formato JSON — UiPath',
-        titleEn: 'JSON Format — UiPath',
-        descPt:  'Referência rápida do payload que o robô deve enviar ao servidor via POST /resultado: cotações, fornecedores e métricas de ROI.',
-        descEn:  'Quick reference for the payload the robot must send to the server via POST /resultado: quotations, suppliers, and ROI metrics.',
+        target: '#json-format-panel', view: 'dashboard',
+        titlePt: 'Formato JSON — UiPath', titleEn: 'JSON Format — UiPath',
+        descPt:  'Referência rápida do payload que o robô deve enviar ao servidor via POST /resultado.',
+        descEn:  'Quick reference for the payload the robot must send via POST /resultado.',
     },
 ];
 
@@ -871,20 +841,17 @@ function posicionarTourElementos(step) {
     const tooltip   = document.getElementById('tour-tooltip');
     if (!targetEl || !spotlight || !tooltip) return;
 
-    // Elementos são position:fixed → coordenadas do viewport, sem scroll
     const rect = targetEl.getBoundingClientRect();
     const vw   = window.innerWidth;
     const vh   = window.innerHeight;
-    const TW   = 310;   // largura do tooltip
-    const TH   = 230;   // altura estimada do tooltip
+    const TW   = 310;
+    const TH   = 230;
 
-    // Spotlight ao redor do elemento
     spotlight.style.width  = (rect.width  + 12) + 'px';
     spotlight.style.height = (rect.height + 12) + 'px';
     spotlight.style.left   = (rect.left   -  6) + 'px';
     spotlight.style.top    = (rect.top    -  6) + 'px';
 
-    // Tooltip: tenta à direita, depois à esquerda, senão centraliza
     let left = rect.right + 16;
     let top  = rect.top;
 
@@ -896,7 +863,6 @@ function posicionarTourElementos(step) {
     tooltip.style.left = left + 'px';
     tooltip.style.top  = top  + 'px';
 
-    // Aparece com fade após posição estar aplicada
     requestAnimationFrame(() => {
         spotlight.style.opacity = '1';
         tooltip.style.opacity   = '1';
@@ -909,14 +875,11 @@ function renderTourStep() {
     const spotlight = document.getElementById('tour-spotlight');
     const tooltip   = document.getElementById('tour-tooltip');
 
-    // 1. Oculta instantaneamente (sem transição de posição)
     if (spotlight) spotlight.style.opacity = '0';
     if (tooltip)   tooltip.style.opacity   = '0';
 
-    // 2. Troca de view se necessário
     if (step.view) switchView(step.view);
 
-    // 3. Atualiza textos
     const labelEl = document.getElementById('tour-step-label');
     const titleEl = document.getElementById('tour-title');
     const descEl  = document.getElementById('tour-desc');
@@ -932,23 +895,15 @@ function renderTourStep() {
         : (currentLang === 'en' ? 'Next ➔'   : 'Avançar ➔');
 
     updateTourDots();
-
-    // 4. Aguarda DOM renderizar (necessário quando há troca de view) e reposiciona
     setTimeout(() => posicionarTourElementos(step), step.view ? 80 : 20);
 }
 
 function tourNext() {
-    if (tourStep < TOUR_STEPS.length - 1) {
-        tourStep++;
-        renderTourStep();
-    } else {
-        tourEnd();
-    }
+    if (tourStep < TOUR_STEPS.length - 1) { tourStep++; renderTourStep(); }
+    else tourEnd();
 }
 
-function tourSkip() {
-    tourEnd();
-}
+function tourSkip() { tourEnd(); }
 
 function tourEnd() {
     tourActive = false;
@@ -967,10 +922,8 @@ function toggleComparacao(idx) {
     const expandRow = document.getElementById(`comp-expand-${idx}`);
     const btn       = document.getElementById(`btn-comp-${idx}`);
     if (!expandRow) return;
-
     const aberto = expandRow.style.display !== 'none';
     expandRow.style.display = aberto ? 'none' : 'table-row';
-
     if (btn) {
         btn.classList.toggle('ativo', !aberto);
         const chev = btn.querySelector('.comp-chev');
@@ -1005,22 +958,13 @@ function copiarJson() {
 
 // ─── Init ─────────────────────────────────────
 window.onload = () => {
-    // Carrega preferências de tema
     const saved = localStorage.getItem('darkMode');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     toggleDarkMode(saved !== null ? saved === '1' : prefersDark);
-    
-    // Inicializa traduções e configurações
     applyTranslations();
     carregarConfiguracoes();
     renderizarHistorico();
-
-    // Roda polling imediato e define o intervalo (5 segundos)
     carregarDadosAutomacao();
     setInterval(carregarDadosAutomacao, 5000);
-
-    // Dispara o tour se nunca tiver sido concluído
-    if (!localStorage.getItem('tourDone')) {
-        setTimeout(tourStart, 1000);
-    }
+    if (!localStorage.getItem('tourDone')) setTimeout(tourStart, 1000);
 };
