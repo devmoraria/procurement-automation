@@ -7,15 +7,18 @@ Como rodar localmente:
     python server.py
 
 Variáveis de ambiente (.env):
-    MONGO_URI          -> URI de conexão do MongoDB Atlas
-    PORT               -> Porta do servidor (padrão 5000)
-    SERVER_ORIGIN      -> URL do front-end para restringir CORS
-    FLASK_DEBUG        -> true/false (padrão false)
-    UIPATH_CLIENT_ID   -> App ID da External Application no UiPath Cloud
+    MONGO_URI            -> URI de conexão do MongoDB Atlas
+    PORT                 -> Porta do servidor (padrão 5000)
+    SERVER_ORIGIN        -> URL do front-end para restringir CORS
+    FLASK_DEBUG          -> true/false (padrão false)
+    UIPATH_CLIENT_ID     -> App ID da External Application no UiPath Cloud
     UIPATH_CLIENT_SECRET -> App Secret gerado no UiPath Cloud
-    UIPATH_ORG_ID      -> ID/slug da organização (ex: proajizvujd)
-    UIPATH_TENANT      -> Nome do tenant (ex: DefaultTenant)
-    UIPATH_RELEASE_KEY -> Release Key do processo no Orchestrator
+    UIPATH_ORG_ID        -> ID/slug da organização (ex: proajizvujd)
+    UIPATH_TENANT        -> Nome do tenant (ex: DefaultTenant)
+    UIPATH_RELEASE_KEY   -> Release Key do processo no Orchestrator
+    UIPATH_FOLDER_ID     -> ID numérico da pasta no Orchestrator
+    USE_MOCK             -> true = não dispara o robô, usa dados já no MongoDB
+                           false = dispara o robô via API (padrão)
 
 Banco: equipamentos_cotacao
 Coleções:
@@ -66,7 +69,14 @@ UIPATH_CLIENT_SECRET = os.environ.get("UIPATH_CLIENT_SECRET", "")
 UIPATH_ORG_ID        = os.environ.get("UIPATH_ORG_ID", "")
 UIPATH_TENANT        = os.environ.get("UIPATH_TENANT", "DefaultTenant")
 UIPATH_RELEASE_KEY   = os.environ.get("UIPATH_RELEASE_KEY", "")
-UIPATH_FOLDER_ID     = os.environ.get("UIPATH_FOLDER_ID", "") 
+UIPATH_FOLDER_ID     = os.environ.get("UIPATH_FOLDER_ID", "")
+
+# ─────────────────────────────────────────────
+# MODO MOCK
+# true  → não dispara o robô, usa dados já salvos no MongoDB
+# false → dispara o robô via API do Orchestrator (padrão)
+# ─────────────────────────────────────────────
+USE_MOCK = os.environ.get("USE_MOCK", "false").lower() == "true"
 
 
 def uipath_get_token():
@@ -103,22 +113,21 @@ def uipath_disparar_job():
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type":  "application/json",
-            "X-UIPATH-OrganizationUnitId": UIPATH_FOLDER_ID,  # ID numérico da pasta
+            "X-UIPATH-OrganizationUnitId": str(UIPATH_FOLDER_ID),
         }
 
         payload = {
-    "startInfo": {
-        "ReleaseKey": UIPATH_RELEASE_KEY,
-        "JobsCount": 1,
-        "JobPriority": "Normal",
-        "Strategy": "ModernJobsCount",
-        "ResumeOnSameContext": False,
-        "RuntimeType": "Attended",
-        "RunAsMe": True,
-        "InputArguments": "{}"
-    }
-}
-
+            "startInfo": {
+                "ReleaseKey": UIPATH_RELEASE_KEY,
+                "JobsCount": 1,
+                "JobPriority": "Normal",
+                "Strategy": "ModernJobsCount",
+                "ResumeOnSameContext": False,
+                "RuntimeType": "Attended",
+                "RunAsMe": True,
+                "InputArguments": "{}"
+            }
+        }
 
         resp = http_requests.post(url, json=payload, headers=headers, timeout=15)
         resp.raise_for_status()
@@ -126,7 +135,6 @@ def uipath_disparar_job():
         job_id = resp.json().get("value", [{}])[0].get("Id", "?")
         print(f"[UiPath] Job disparado com sucesso. Job ID: {job_id}")
 
-        # Atualiza log no painel
         colecao_estado.update_one({"_id": ESTADO_ID}, {"$set": {
             "ultimo_log": f"Robô disparado às {datetime.now().strftime('%H:%M:%S')}. Job ID: {job_id}"
         }})
@@ -245,16 +253,14 @@ def receber_solicitacao():
         for item in dados["itens"]
     ]
 
-    # Atualiza painel
     colecao_estado.update_one({"_id": ESTADO_ID}, {"$set": {
         "status_robo":        "Em execução",
-        "ultimo_log":         f"Nova solicitação recebida às {datetime.now().strftime('%H:%M:%S')}. Disparando robô...",
+        "ultimo_log":         f"Nova solicitação recebida às {datetime.now().strftime('%H:%M:%S')}. {'Carregando dados do banco...' if USE_MOCK else 'Disparando robô...'}",
         "alerta_erro":        None,
         "ultima_atualizacao": ultima_atualizacao,
         "cotacoes":           cotacoes_pendentes,
     }}, upsert=True)
 
-    # Salva histórico
     colecao_solicitacoes.insert_one({
         "timestamp": ultima_atualizacao,
         "itens":     dados["itens"]
@@ -262,10 +268,13 @@ def receber_solicitacao():
 
     print(f"[{ultima_atualizacao}] Pedido salvo em pedidos_entrada: {len(dados['itens'])} item(s)")
 
-    # ─── DISPARA O ROBÔ EM BACKGROUND ───
-    thread = threading.Thread(target=uipath_disparar_job, daemon=True)
-    thread.start()
-    # ────────────────────────────────────
+    # ─── DISPARA O ROBÔ OU USA MOCK ───
+    if USE_MOCK:
+        print("[MOCK] Modo mock ativo — dados já estão no MongoDB, robô não será disparado.")
+    else:
+        thread = threading.Thread(target=uipath_disparar_job, daemon=True)
+        thread.start()
+    # ──────────────────────────────────
 
     return jsonify({"ok": True, "mensagem": f"{len(dados['itens'])} item(s) enviados para o robô"}), 200
 
@@ -279,7 +288,8 @@ def status():
     return jsonify({
         "servidor":           "online",
         "mongodb":            "equipamentos_cotacao",
-        "ultima_atualizacao": estado.get("ultima_atualizacao") if estado else None
+        "ultima_atualizacao": estado.get("ultima_atualizacao") if estado else None,
+        "modo_mock":          USE_MOCK
     })
 
 
@@ -293,6 +303,7 @@ if __name__ == '__main__':
     print("=" * 50)
     print("  Servidor Automação de Compras TI (MongoDB Ativo)")
     print(f"  Banco: equipamentos_cotacao")
+    print(f"  Modo mock: {'ATIVO' if USE_MOCK else 'inativo'}")
     print(f"  Rodando em http://0.0.0.0:{port}")
     print("=" * 50)
     app.run(host="0.0.0.0", port=port, debug=debug)
