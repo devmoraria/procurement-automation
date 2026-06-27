@@ -500,11 +500,15 @@ async function carregarDadosAutomacao() {
     if (!statusBadge) return;
     
     try {
+        appendLog("🔄 Consultando servidor...");
         const resposta = await fetch(`${SERVER_URL}/dados`);
+        appendLog(`📡 Servidor respondeu: ${resposta.status}`);
         const dados = await resposta.json();
+        appendLog(`📦 status_robo: ${dados.status_robo} | cotacoes: ${dados.cotacoes?.length ?? 0} | log: ${dados.ultimo_log}`);
 
         if (dados.ultimo_log !== ultimoLog) {
-            ultimoLog = dados.ultimo_log;
+            appendLog("🔁 Log mudou — atualizando dashboard...");
+
 
             if (dados.alerta_erro) {
                 statusBadge.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ${currentLang === 'en' ? 'Error detected' : 'Erro detectado'}`;
