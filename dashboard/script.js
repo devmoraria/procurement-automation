@@ -2,7 +2,7 @@
 // script.js — Automação de Compras TI | Grupo 1
 // ─────────────────────────────────────────────
 
-const SERVER_URL = "http://127.0.0.1:5000";
+const SERVER_URL = "https://procurement-automation-qy7b.onrender.com";
 
 // Histórico local
 const historicoLocal = [];
@@ -423,6 +423,8 @@ let ultimoLog = "";
 
 async function carregarDadosAutomacao() {
     const statusBadge = document.getElementById('robot-status');
+    if (!statusBadge) return;
+    
     try {
         const resposta = await fetch(`${SERVER_URL}/dados`);
         const dados = await resposta.json();
@@ -448,38 +450,45 @@ async function carregarDadosAutomacao() {
             renderizarGrafico(dados.performance_roi.tempo_manual, dados.performance_roi.tempo_robo);
 
             const tbody = document.getElementById('dashboard-table-body');
-            tbody.innerHTML = "";
-            if (dados.cotacoes && dados.cotacoes.length > 0) {
-                dados.cotacoes.forEach(c => {
-                    const link = c.link
-                        ? `<a href="${c.link}" target="_blank" style="color:#002776;font-size:11px;margin-left:4px;">↗</a>`
-                        : "";
-                    const precoExibido = (c.status === 'completo' && c.preco != null)
-                        ? `<b>R$ ${c.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b>`
-                        : `<span style="color:#999;font-size:12px;">—</span>`;
-                    const fornecedorExibido = c.fornecedor
-                        ? `<span style="color:#007200">●</span> ${c.fornecedor}${link}`
-                        : `<span style="color:#999;font-size:12px;">${currentLang === 'en' ? 'Waiting...' : 'Aguardando...'}</span>`;
+            if (tbody) {
+                tbody.innerHTML = "";
 
-                    tbody.innerHTML += `<tr>
-                        <td><strong>${c.item}</strong></td>
-                        <td>${c.desc}</td>
-                        <td>${c.qtd}</td>
-                        <td>${fornecedorExibido}</td>
-                        <td>${precoExibido}</td>
-                        <td>${badgeStatus(c.status)}</td>
-                    </tr>`;
-                });
+                // Nova leitura adaptada para a estrutura do pedido_entrada que está rodando no backend
+                if (dados.pedido_entrada && dados.pedido_entrada.itens && dados.pedido_entrada.itens.length > 0) {
+                    dados.pedido_entrada.itens.forEach(item => {
+                        const nomeItem = `<strong>${item.marca || ''} ${item.modelo || ''}</strong>`.trim();
+                        const especificacao = item.observacoes || "—";
+                        const quantidade = item.quantidade || 1;
+                        const statusItem = (item.status || "pendente").toLowerCase();
 
-                const todosConcluidos = dados.cotacoes.every(c => c.status === 'completo');
-                if (todosConcluidos && historicoLocal.length > 0) {
-                    historicoLocal[0].status = 'Concluído';
-                    renderizarHistorico();
+                        const cotacaoCorrespondente = dados.cotacoes && dados.cotacoes.find(c => `${item.marca} ${item.modelo}`.trim().includes(c.item));
+                        
+                        const link = (cotacaoCorrespondente && cotacaoCorrespondente.link)
+                            ? `<a href="${cotacaoCorrespondente.link}" target="_blank" style="color:#002776;font-size:11px;margin-left:4px;">↗</a>`
+                            : "";
+                        
+                        const precoExibido = (statusItem === 'completo' && cotacaoCorrespondente && cotacaoCorrespondente.preco != null)
+                            ? `<b>R$ ${cotacaoCorrespondente.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b>`
+                            : `<span style="color:#999;font-size:12px;">—</span>`;
+
+                        const fornecedorExibido = (cotacaoCorrespondente && cotacaoCorrespondente.fornecedor)
+                            ? `<span style="color:#007200">●</span> ${cotacaoCorrespondente.fornecedor}${link}`
+                            : `<span style="color:#999;font-size:12px;">${currentLang === 'en' ? 'Waiting...' : 'Aguardando...'}</span>`;
+
+                        tbody.innerHTML += `<tr>
+                            <td>${nomeItem}</td>
+                            <td>${especificacao}</td>
+                            <td>${quantidade}</td>
+                            <td>${fornecedorExibido}</td>
+                            <td>${precoExibido}</td>
+                            <td>${badgeStatus(statusItem)}</td>
+                        </tr>`;
+                    });
+                } else if (dados.status_robo === "Em execução") {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#856404;padding:20px;">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i> ${currentLang === 'en' ? 'Robot searching prices...' : 'Robô pesquisando preços...'}
+                    </td></tr>`;
                 }
-            } else if (dados.status_robo === "Em execução") {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#856404;padding:20px;">
-                    <i class="fa-solid fa-circle-notch fa-spin"></i> ${currentLang === 'en' ? 'Robot searching prices...' : 'Robô pesquisando preços...'}
-                </td></tr>`;
             }
         }
     } catch (err) {
