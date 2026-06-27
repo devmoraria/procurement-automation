@@ -103,17 +103,22 @@ def uipath_disparar_job():
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type":  "application/json",
-            "X-UIPATH-OrganizationUnitId": int(UIPATH_FOLDER_ID),  # ID numérico da pasta
+            "X-UIPATH-OrganizationUnitId": UIPATH_FOLDER_ID,  # ID numérico da pasta
         }
 
         payload = {
-            "startInfo": {
-                "ReleaseKey": UIPATH_RELEASE_KEY,
-                "Strategy":   "All",   # dispara em todos os robôs disponíveis
-                "JobsCount":  1,
-                "Source":     "Manual",
-            }
-        }
+    "startInfo": {
+        "ReleaseKey": UIPATH_RELEASE_KEY,
+        "JobsCount": 1,
+        "JobPriority": "Normal",
+        "Strategy": "ModernJobsCount",
+        "ResumeOnSameContext": False,
+        "RuntimeType": "Attended",
+        "RunAsMe": True,
+        "InputArguments": "{}"
+    }
+}
+
 
         resp = http_requests.post(url, json=payload, headers=headers, timeout=15)
         resp.raise_for_status()
