@@ -502,14 +502,31 @@ async function carregarDadosAutomacao() {
     if (!statusBadge) return;
     
     try {
-        appendLog("🔄 Consultando servidor...");
+        appendLog("Consultando servidor...");
         const resposta = await fetch(`${SERVER_URL}/dados`);
-        appendLog(`📡 Servidor respondeu: ${resposta.status}`);
+        appendLog(`Servidor respondeu: ${resposta.status}`);
         const dados = await resposta.json();
-        appendLog(`📦 status_robo: ${dados.status_robo} | cotacoes: ${dados.cotacoes?.length ?? 0} | log: ${dados.ultimo_log}`);
+        appendLog(`status_robo: ${dados.status_robo} | cotacoes: ${dados.cotacoes?.length ?? 0} | log: ${dados.ultimo_log}`);
 
-        if (dados.ultimo_log !== ultimoLog) {
-            appendLog("🔁 Log mudou — atualizando dashboard...");
+        const novasCotacoes = JSON.stringify(dados.cotacoes);
+        const logMudou = (dados.ultimo_log !== ultimoLog);
+        const cotacoesMudaram = (novasCotacoes !== ultimasCotacoes);
+
+        // 2. Só atualiza se algo mudou
+        if (logMudou || cotacoesMudaram) {
+            
+            // Se o log mudou, avisa o usuário
+            if (logMudou) {
+                appendLog("Log mudou — atualizando dashboard...");
+            }
+            
+            // Atualiza as variáveis de estado para as próximas verificações
+            ultimoLog = dados.ultimo_log;
+            ultimasCotacoes = novasCotacoes;
+            
+            // 3. Executa a renderização da tabela
+            atualizarTabela(dados.cotacoes); 
+        }
 
 
             if (dados.alerta_erro) {
