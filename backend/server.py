@@ -103,7 +103,7 @@ def uipath_disparar_job():
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type":  "application/json",
-            "X-UIPATH-OrganizationUnitId": UIPATH_FOLDER_ID,  # ID numérico da pasta
+            "X-UIPATH-OrganizationUnitId": int(UIPATH_FOLDER_ID),  # ID numérico da pasta
         }
 
         payload = {
