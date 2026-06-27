@@ -298,14 +298,28 @@ def receber_solicitacao():
 # ─────────────────────────────────────────────
 @app.route('/status', methods=['GET'])
 def status():
+    # Busca o estado completo, incluindo cotacoes e log
     estado = colecao_estado.find_one({"_id": ESTADO_ID}, {"_id": 0})
-    return jsonify({
-        "servidor":           "online",
-        "mongodb":            "equipamentos_cotacao",
-        "ultima_atualizacao": estado.get("ultima_atualizacao") if estado else None,
-        "modo_mock":          USE_MOCK
-    })
+    
+    # Se não encontrar nada no estado, retorna um padrão vazio para evitar erro
+    if not estado:
+        return jsonify({
+            "servidor": "online",
+            "status_robo": "Aguardando...",
+            "ultimo_log": "Nenhuma solicitação encontrada.",
+            "cotacoes": [],
+            "modo_mock": USE_MOCK
+        }), 200
 
+    # Retorna o objeto completo para o front-end
+    return jsonify({
+        "servidor": "online",
+        "status_robo": estado.get("status_robo", "Aguardando..."),
+        "ultimo_log": estado.get("ultimo_log", ""),
+        "cotacoes": estado.get("cotacoes", []),
+        "ultima_atualizacao": estado.get("ultima_atualizacao"),
+        "modo_mock": USE_MOCK
+    }), 200
 
 # ─────────────────────────────────────────────
 # INICIALIZAÇÃO
