@@ -531,7 +531,10 @@ async function carregarDadosAutomacao() {
 
             const tbody = document.getElementById('dashboard-table-body');
             if (tbody) {
-                if (dados.ultimo_log === ultimoLog) return;
+                const cotacoesMudaram = JSON.stringify(dados.cotacoes) !== ultimasCotacoes;
+                if (!cotacoesMudaram && dados.ultimo_log === ultimoLog) return;
+                ultimasCotacoes = JSON.stringify(dados.cotacoes);
+
                 const comparacoesAbertas = [];
                 document.querySelectorAll('.btn-comparar.ativo').forEach(btn => {
                     comparacoesAbertas.push(btn.id.replace('btn-comp-', ''));
