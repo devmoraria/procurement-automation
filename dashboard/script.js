@@ -27,6 +27,7 @@ const TRANSLATIONS = {
         "kpi.robo":             "Com UiPath",
         "chart.title":          "Eficiência de Tempo",
         "table.title":          "Melhores Ofertas Encontradas",
+        "table.sub":            "Preços ordenados do mais barato ao mais caro por item.",
         "col.item":             "Item",
         "col.spec":             "Especificação",
         "col.qty":              "Qtd",
@@ -80,6 +81,17 @@ const TRANSLATIONS = {
         "config.tour":          "Tour Guiado",
         "config.tour.label":    "Reiniciar o tour de boas-vindas",
         "btn.tour":             "Iniciar Tour",
+        "json.title":           "Formato JSON — POST /resultado (UiPath → Servidor)",
+        "json.badge":           "Referência para o Robô",
+        "json.desc":            "O robô UiPath deve enviar um POST para /resultado com o corpo abaixo. Os campos status de cada cotação são preenchidos automaticamente pelo servidor se omitidos.",
+        "json.f.status_robo":   "Ex: \"Concluído\" — aparece no badge de monitoramento.",
+        "json.f.ultimo_log":    "Mensagem exibida no console do robô em tempo real.",
+        "json.f.alerta_erro":   "Null se sem erros. Texto do erro se houver falha.",
+        "json.f.roi":           "tempo_manual, tempo_robo, horas_poupadas (em hrs).",
+        "json.cot.title":       "Estrutura de cada cotação em cotacoes[]:",
+        "json.copy":            "Copiar",
+        "json.note1":           "O campo status por cotação é opcional — o servidor detecta automaticamente.",
+        "json.note2":           "Chaves de fornecedor: kabum, pichau, terabyte, amazon, mercadolivre, magazineluiza, dell, lenovo.",
     },
     en: {
         "brand":                "Procurement Automation",
@@ -99,6 +111,7 @@ const TRANSLATIONS = {
         "kpi.robo":             "With UiPath",
         "chart.title":          "Time Efficiency",
         "table.title":          "Best Offers Found",
+        "table.sub":            "Prices ordered from cheapest to most expensive per item.",
         "col.item":             "Item",
         "col.spec":             "Specification",
         "col.qty":              "Qty",
@@ -152,6 +165,17 @@ const TRANSLATIONS = {
         "config.tour":          "Guided Tour",
         "config.tour.label":    "Restart the welcome tour",
         "btn.tour":             "Start Tour",
+        "json.title":           "JSON Format — POST /resultado (UiPath → Server)",
+        "json.badge":           "Robot Reference",
+        "json.desc":            "The UiPath robot must send a POST to /resultado with the body below. The status field per quotation is filled automatically by the server if omitted.",
+        "json.f.status_robo":   "e.g. \"Concluído\" — shown on the monitoring badge.",
+        "json.f.ultimo_log":    "Message shown in the robot console in real time.",
+        "json.f.alerta_erro":   "Null if no errors. Error text if a failure occurred.",
+        "json.f.roi":           "tempo_manual, tempo_robo, horas_poupadas (in hrs).",
+        "json.cot.title":       "Structure of each entry in cotacoes[]:",
+        "json.copy":            "Copy",
+        "json.note1":           "The status field per quotation is optional — the server auto-detects it.",
+        "json.note2":           "Supplier keys: kabum, pichau, terabyte, amazon, mercadolivre, magazineluiza, dell, lenovo.",
     }
 };
 
@@ -194,13 +218,6 @@ function toggleDarkMode(enabled) {
     if (tog) tog.checked = enabled;
 }
 
-function initDarkMode() {
-    const saved = localStorage.getItem('darkMode');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const isDark = saved !== null ? saved === '1' : prefersDark;
-    toggleDarkMode(isDark);
-}
-
 // ─── Configurações ────────────────────────────
 const FORNECEDORES_PADRAO = [
     { id: 'kabum',       nome: 'KaBuM!' },
@@ -234,12 +251,9 @@ function toggleFornecedor(checkbox) {
 }
 
 function salvarConfiguracoes() {
-    // Pega apenas os fornecedores selecionados na tela
     const fornSelecionados = [...document.querySelectorAll('.forn-chip input:checked')]
                               .map(cb => cb.closest('.forn-chip').dataset.id);
 
-    // Salva no localStorage mantendo valores fixos para o departamento e valor/hora
-    // assim o PDF e o histórico continuam funcionando sem quebrar
     const cfg = { 
         dept: 'Suprimentos de TI', 
         valorHora: 90, 
@@ -252,8 +266,12 @@ function salvarConfiguracoes() {
 function switchView(viewId) {
     document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-    document.getElementById('view-' + viewId).classList.add('active');
-    document.getElementById('menu-' + viewId).classList.add('active');
+    
+    const targetView = document.getElementById('view-' + viewId);
+    const targetMenu = document.getElementById('menu-' + viewId);
+    
+    if (targetView) targetView.classList.add('active');
+    if (targetMenu) targetMenu.classList.add('active');
 }
 
 // ─── Tabela de Input ──────────────────────────
@@ -307,8 +325,10 @@ async function enviarSolicitacao() {
     }
 
     const btnEnviar = document.getElementById('btn-enviar');
-    btnEnviar.disabled = true;
-    btnEnviar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
+    if (btnEnviar) {
+        btnEnviar.disabled = true;
+        btnEnviar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
+    }
 
     try {
         const response = await fetch(`${SERVER_URL}/solicitacao`, {
@@ -332,15 +352,18 @@ async function enviarSolicitacao() {
     } catch (err) {
         alert("Não foi possível conectar ao servidor. Verifique se o server.py está rodando.");
     } finally {
-        btnEnviar.disabled = false;
-        btnEnviar.innerHTML = `<i class="fa-solid fa-paper-plane"></i> ${t('btn.send')}`;
+        if (btnEnviar) {
+            btnEnviar.disabled = false;
+            btnEnviar.innerHTML = `<i class="fa-solid fa-paper-plane"></i> ${t('btn.send')}`;
+        }
     }
 }
 
 // ─── Histórico ────────────────────────────────
 function renderizarHistorico() {
     const tbody = document.getElementById('historico-body');
-    const dept  = (JSON.parse(localStorage.getItem('config') || '{}')).dept || 'Suprimentos de TI';
+    if (!tbody) return;
+    const dept = (JSON.parse(localStorage.getItem('config') || '{}')).dept || 'Suprimentos de TI';
 
     if (historicoLocal.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#999;padding:20px;">
@@ -365,6 +388,7 @@ function renderizarHistorico() {
 // ─── Console do Robô ──────────────────────────
 function appendLog(mensagem) {
     const el = document.getElementById('robot-console');
+    if (!el) return;
     const hora = new Date().toLocaleTimeString('pt-BR');
     el.innerHTML += `\n[${hora}] ${mensagem}`;
     el.scrollTop = el.scrollHeight;
@@ -374,7 +398,9 @@ function appendLog(mensagem) {
 let meuGrafico = null;
 
 function renderizarGrafico(manual, robo) {
-    const ctx = document.getElementById('dashboardChart').getContext('2d');
+    const chartEl = document.getElementById('dashboardChart');
+    if (!chartEl) return;
+    const ctx = chartEl.getContext('2d');
     if (meuGrafico) meuGrafico.destroy();
     meuGrafico = new Chart(ctx, {
         type: 'bar',
@@ -392,16 +418,19 @@ function renderizarGrafico(manual, robo) {
 
 // ─── KPI Cards ───────────────────────────────
 function atualizarKPIs(roi) {
-    // Usa valor/hora das configurações para recalcular economia
     const cfg        = JSON.parse(localStorage.getItem('config') || '{}');
     const valorHora  = parseFloat(cfg.valorHora) || 90;
     const economia   = (roi.horas_poupadas || 0) * valorHora;
 
-    document.getElementById('kpi-economia').innerText =
-        `R$ ${economia.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-    document.getElementById('kpi-horas-poupadas').innerText = `${roi.horas_poupadas} hrs`;
-    document.getElementById('kpi-manual').innerText = `${roi.tempo_manual} hrs/mês`;
-    document.getElementById('kpi-robo').innerText   = `${roi.tempo_robo} hrs/mês`;
+    const elEcon = document.getElementById('kpi-economia');
+    const elHoras = document.getElementById('kpi-horas-poupadas');
+    const elManual = document.getElementById('kpi-manual');
+    const elRobo = document.getElementById('kpi-robo');
+
+    if (elEcon) elEcon.innerText = `R$ ${economia.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    if (elHoras) elHoras.innerText = `${roi.horas_poupadas} hrs`;
+    if (elManual) elManual.innerText = `${roi.tempo_manual} hrs/mês`;
+    if (elRobo) elRobo.innerText = `${roi.tempo_robo} hrs/mês`;
 }
 
 // ─── Badge status ─────────────────────────────
@@ -412,11 +441,55 @@ function badgeStatus(status) {
             ✔ ${currentLang === 'en' ? 'Done' : 'Completo'}
         </span>`;
     }
+    if (status === 'sem_resultado') {
+        return `<span style="display:inline-block;padding:2px 8px;border-radius:10px;
+            background:#fce8e6;color:#c5221f;font-size:11px;font-weight:600;">
+            ✖ ${currentLang === 'en' ? 'Not found' : 'Não encontrado'}
+        </span>`;
+    }
     return `<span style="display:inline-block;padding:2px 8px;border-radius:10px;
         background:#fff3cd;color:#856404;font-size:11px;font-weight:600;">
         ⏳ ${currentLang === 'en' ? 'Pending' : 'Pendente'}
     </span>`;
 }
+
+// Nomes de exibição para cada chave de fornecedor retornada pelo robô
+const NOMES_FORNECEDORES = {
+    kabum:        'KaBuM!',
+    pichau:       'Pichau',
+    terabyte:     'Terabyte Shop',
+    amazon:       'Amazon BR',
+    mercadolivre: 'Mercado Livre',
+    magazineluiza:'Magazine Luiza',
+    dell:         'Dell Direct',
+    lenovo:       'Lenovo Store',
+};
+
+function nomeFornecedor(chave) {
+    return NOMES_FORNECEDORES[chave] || chave;
+}
+
+// ─── Popover de comparação de ofertas (tabela do dashboard) ──
+function toggleOfertaPopover(event, popoverId) {
+    event.stopPropagation();
+    const popover = document.getElementById(popoverId);
+    if (!popover) return;
+    const jaAberto = popover.classList.contains('open');
+    // Fecha qualquer outro popover aberto antes de abrir o novo
+    document.querySelectorAll('.cot-popover.open').forEach(p => p.classList.remove('open'));
+    document.querySelectorAll('.cot-mais-ofertas.open').forEach(b => b.classList.remove('open'));
+    if (!jaAberto) {
+        popover.classList.add('open');
+        event.currentTarget.classList.add('open');
+    }
+}
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.cot-fornecedor-cell')) {
+        document.querySelectorAll('.cot-popover.open').forEach(p => p.classList.remove('open'));
+        document.querySelectorAll('.cot-mais-ofertas.open').forEach(b => b.classList.remove('open'));
+    }
+});
 
 // ─── Polling ─────────────────────────────────
 let ultimoLog = "";
@@ -453,39 +526,136 @@ async function carregarDadosAutomacao() {
             if (tbody) {
                 tbody.innerHTML = "";
 
-                // Nova leitura adaptada para a estrutura do pedido_entrada que está rodando no backend
-                if (dados.pedido_entrada && dados.pedido_entrada.itens && dados.pedido_entrada.itens.length > 0) {
-                    dados.pedido_entrada.itens.forEach(item => {
-                        const nomeItem = `<strong>${item.marca || ''} ${item.modelo || ''}</strong>`.trim();
-                        const especificacao = item.observacoes || "—";
-                        const quantidade = item.quantidade || 1;
-                        const statusItem = (item.status || "pendente").toLowerCase();
+                if (dados.cotacoes && dados.cotacoes.length > 0) {
+                    dados.cotacoes.forEach((cotacao, idx) => {
+                        const nomeItem     = cotacao.item || '';
+                        const especificacao = cotacao.desc || '';
+                        const quantidade   = cotacao.qtd || 1;
+                        const statusItem   = (cotacao.status || "pendente").toLowerCase();
 
-                        const cotacaoCorrespondente = dados.cotacoes && dados.cotacoes.find(c => `${item.marca} ${item.modelo}`.trim().includes(c.item));
-                        
-                        const link = (cotacaoCorrespondente && cotacaoCorrespondente.link)
-                            ? `<a href="${cotacaoCorrespondente.link}" target="_blank" style="color:#002776;font-size:11px;margin-left:4px;">↗</a>`
-                            : "";
-                        
-                        const precoExibido = (statusItem === 'completo' && cotacaoCorrespondente && cotacaoCorrespondente.preco != null)
-                            ? `<b>R$ ${cotacaoCorrespondente.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b>`
-                            : `<span style="color:#999;font-size:12px;">—</span>`;
+                        // Monta lista de ofertas ordenada por preço
+                        const fornecedores = cotacao.fornecedores || {};
+                        const ofertas = Object.keys(fornecedores)
+                            .map(chave => ({
+                                chave,
+                                nome:  nomeFornecedor(chave),
+                                preco: fornecedores[chave]?.preco ?? null,
+                                link:  fornecedores[chave]?.link  ?? ""
+                            }))
+                            .filter(o => o.preco != null)
+                            .sort((a, b) => a.preco - b.preco);
 
-                        const fornecedorExibido = (cotacaoCorrespondente && cotacaoCorrespondente.fornecedor)
-                            ? `<span style="color:#007200">●</span> ${cotacaoCorrespondente.fornecedor}${link}`
-                            : `<span style="color:#999;font-size:12px;">${currentLang === 'en' ? 'Waiting...' : 'Aguardando...'}</span>`;
+                        const melhor      = ofertas[0] || null;
+                        const maiorPreco  = ofertas.length ? ofertas[ofertas.length - 1].preco : 0;
+                        const temCompar   = ofertas.length >= 2;
 
-                        tbody.innerHTML += `<tr>
-                            <td>${nomeItem}</td>
-                            <td>${especificacao}</td>
+                        // ── Coluna Fornecedor (só melhor + link) ──
+                        let fornecedorExibido;
+                        if (melhor) {
+                            const linkIcon = melhor.link
+                                ? `<a class="cot-fornecedor-link" href="${melhor.link}" target="_blank">↗</a>`
+                                : "";
+                            fornecedorExibido = `
+                                <div class="cot-fornecedor-principal">
+                                    <span class="dot"></span> ${melhor.nome}${linkIcon}
+                                </div>`;
+                        } else {
+                            fornecedorExibido = `<span class="cot-vazio">${
+                                statusItem === 'sem_resultado'
+                                    ? (currentLang === 'en' ? 'No offers found' : 'Nenhuma oferta encontrada')
+                                    : (currentLang === 'en' ? 'Waiting…' : 'Aguardando…')
+                            }</span>`;
+                        }
+
+                        // ── Menor preço exibido ──
+                        const precoExibido = melhor
+                            ? `<span class="cot-preco">R$ ${melhor.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>`
+                            : `<span class="cot-preco-vazio">—</span>`;
+
+                        // ── Botão comparar ──
+                        const btnCompar = temCompar
+                            ? `<button class="btn-comparar" id="btn-comp-${idx}" onclick="toggleComparacao(${idx})">
+                                   <i class="fa-solid fa-chart-bar"></i>
+                                   <span>${currentLang === 'en' ? 'Compare' : 'Comparar'}</span>
+                                   <i class="fa-solid fa-chevron-down comp-chev"></i>
+                               </button>`
+                            : '';
+
+                        // ── Linha principal ──
+                        const linhaClasse = statusItem === 'sem_resultado' ? 'cot-row-sem-resultado' : '';
+                        tbody.innerHTML += `<tr class="cot-main-row ${linhaClasse}" id="cot-row-${idx}">
+                            <td><div class="cot-item-nome">${nomeItem}</div></td>
+                            <td>${especificacao ? `<span class="cot-item-desc">${especificacao}</span>` : '<span class="cot-preco-vazio">—</span>'}</td>
                             <td>${quantidade}</td>
                             <td>${fornecedorExibido}</td>
                             <td>${precoExibido}</td>
                             <td>${badgeStatus(statusItem)}</td>
+                            <td>${btnCompar}</td>
                         </tr>`;
+
+                        // ── Linha de comparação (oculta por padrão) ──
+                        if (temCompar) {
+                            const melhorPreco = melhor.preco;
+
+                            const barras = ofertas.map((o, i) => {
+                                const isMelhor   = i === 0;
+                                const pctBar     = maiorPreco > melhorPreco
+                                    ? Math.round(30 + ((o.preco - melhorPreco) / (maiorPreco - melhorPreco)) * 70)
+                                    : 100;
+                                const pctAcima   = isMelhor ? 0 : Math.round(((o.preco - melhorPreco) / melhorPreco) * 100);
+                                const economia   = maiorPreco - o.preco;
+                                const barColor   = isMelhor ? 'var(--green)'
+                                    : pctAcima <= 5  ? '#e6a817'
+                                    : pctAcima <= 15 ? '#d47200'
+                                    :                  '#c5221f';
+                                const linkBtn    = o.link
+                                    ? `<a class="comp-link-btn" href="${o.link}" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>`
+                                    : '';
+                                const badge      = isMelhor
+                                    ? `<span class="comp-badge melhor">${currentLang === 'en' ? '✔ Best price' : '✔ Melhor preço'}</span>`
+                                    : `<span class="comp-badge acima">+${pctAcima}%</span>`;
+
+                                return `
+                                <div class="comp-row">
+                                    <div class="comp-forn-nome">${o.nome}${badge}</div>
+                                    <div class="comp-bar-wrap">
+                                        <div class="comp-bar" style="width:${pctBar}%;background:${barColor};"></div>
+                                    </div>
+                                    <div class="comp-preco-col">
+                                        <span class="comp-preco ${isMelhor ? 'melhor' : ''}">
+                                            R$ ${o.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </span>
+                                        ${linkBtn}
+                                    </div>
+                                </div>`;
+                            }).join('');
+
+                            const econTotal = maiorPreco - melhorPreco;
+                            const pctEcon   = Math.round((econTotal / maiorPreco) * 100);
+                            const resumo    = `
+                                <div class="comp-resumo">
+                                    <i class="fa-solid fa-piggy-bank"></i>
+                                    ${currentLang === 'en'
+                                        ? `Choosing <strong>${melhor.nome}</strong> saves <strong>R$ ${econTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> (${pctEcon}%) vs. most expensive`
+                                        : `Escolher <strong>${melhor.nome}</strong> economiza <strong>R$ ${econTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> (${pctEcon}%) vs. o mais caro`}
+                                </div>`;
+
+                            tbody.innerHTML += `<tr class="comp-expand-row" id="comp-expand-${idx}" style="display:none;">
+                                <td colspan="7">
+                                    <div class="comp-panel">
+                                        <div class="comp-panel-title">
+                                            <i class="fa-solid fa-scale-balanced"></i>
+                                            ${currentLang === 'en' ? 'Price comparison' : 'Comparação de preços'} — <em>${nomeItem}</em>
+                                        </div>
+                                        <div class="comp-grid">${barras}</div>
+                                        ${resumo}
+                                    </div>
+                                </td>
+                            </tr>`;
+                        }
                     });
                 } else if (dados.status_robo === "Em execução") {
-                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#856404;padding:20px;">
+                    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#856404;padding:20px;">
                         <i class="fa-solid fa-circle-notch fa-spin"></i> ${currentLang === 'en' ? 'Robot searching prices...' : 'Robô pesquisando preços...'}
                     </td></tr>`;
                 }
@@ -527,11 +697,16 @@ function exportarPDF() {
     doc.setFontSize(13); doc.setFont('helvetica', 'bold');
     doc.text('Resumo Executivo', 15, 52);
 
+    const elEcon = document.getElementById('kpi-economia');
+    const elHoras = document.getElementById('kpi-horas-poupadas');
+    const elManual = document.getElementById('kpi-manual');
+    const elRobo = document.getElementById('kpi-robo');
+
     const kpis = [
-        { label: 'Economia Total (ROI)', valor: document.getElementById('kpi-economia').innerText },
-        { label: 'Horas Poupadas / Mês', valor: document.getElementById('kpi-horas-poupadas').innerText },
-        { label: 'Processo Manual',       valor: document.getElementById('kpi-manual').innerText },
-        { label: 'Com UiPath',            valor: document.getElementById('kpi-robo').innerText },
+        { label: 'Economia Total (ROI)', valor: elEcon ? elEcon.innerText : 'R$ 0,00' },
+        { label: 'Horas Poupadas / Mês', valor: elHoras ? elHoras.innerText : '0 hrs' },
+        { label: 'Processo Manual',       valor: elManual ? elManual.innerText : '0 hrs/mês' },
+        { label: 'Com UiPath',            valor: elRobo ? elRobo.innerText : '0 hrs/mês' },
     ];
 
     const cardW = 42, cardH = 22, gap = 4, startX = 15, startY = 57;
@@ -624,7 +799,7 @@ const TOUR_STEPS = [
     },
     {
         target: '#menu-nova-solicitacao',
-        view:   'dashboard',
+        view:   'nova-solicitacao',
         titlePt: 'Nova Solicitação',
         titleEn: 'New Request',
         descPt:  'Aqui você preenche os equipamentos necessários. O robô UiPath irá pesquisar os melhores preços em múltiplos fornecedores.',
@@ -632,7 +807,7 @@ const TOUR_STEPS = [
     },
     {
         target: '#menu-historico',
-        view:   'dashboard',
+        view:   'historico',
         titlePt: 'Histórico',
         titleEn: 'History',
         descPt:  'Consulte todas as solicitações já enviadas, com status e data de execução de cada automação.',
@@ -640,11 +815,19 @@ const TOUR_STEPS = [
     },
     {
         target: '#menu-configuracoes',
-        view:   'dashboard',
+        view:   'configuracoes',
         titlePt: 'Configurações',
         titleEn: 'Settings',
         descPt:  'Personalize o sistema: modo escuro, idioma, nome do departamento, valor/hora para ROI e fornecedores prioritários.',
         descEn:  'Customize the system: dark mode, language, department name, hourly rate for ROI, and priority suppliers.',
+    },
+    {
+        target: '#json-format-panel',
+        view:   'dashboard',
+        titlePt: 'Formato JSON — UiPath',
+        titleEn: 'JSON Format — UiPath',
+        descPt:  'Referência rápida do payload que o robô deve enviar ao servidor via POST /resultado: cotações, fornecedores e métricas de ROI.',
+        descEn:  'Quick reference for the payload the robot must send to the server via POST /resultado: quotations, suppliers, and ROI metrics.',
     },
 ];
 
@@ -654,16 +837,19 @@ let tourActive = false;
 function tourStart() {
     tourStep = 0;
     tourActive = true;
-    document.getElementById('tour-overlay').style.display = 'block';
+    const overlay = document.getElementById('tour-overlay');
+    if (overlay) overlay.style.display = 'block';
     buildTourDots();
     renderTourStep();
 }
 
 function buildTourDots() {
     const dotsEl = document.getElementById('tour-dots');
-    dotsEl.innerHTML = TOUR_STEPS.map((_, i) =>
-        `<div class="tour-dot ${i === 0 ? 'active' : ''}" id="tour-dot-${i}"></div>`
-    ).join('');
+    if (dotsEl) {
+        dotsEl.innerHTML = TOUR_STEPS.map((_, i) =>
+            `<div class="tour-dot ${i === 0 ? 'active' : ''}" id="tour-dot-${i}"></div>`
+        ).join('');
+    }
 }
 
 function updateTourDots() {
@@ -673,93 +859,77 @@ function updateTourDots() {
     });
 }
 
-function renderTourStep() {
+function posicionarTourElementos(step) {
     if (!tourActive) return;
-    const step = TOUR_STEPS[tourStep];
+    const targetEl  = document.querySelector(step.target);
+    const spotlight = document.getElementById('tour-spotlight');
+    const tooltip   = document.getElementById('tour-tooltip');
+    if (!targetEl || !spotlight || !tooltip) return;
 
-    // Mudar view se necessário
-    if (step.view) switchView(step.view);
+    // Elementos são position:fixed → coordenadas do viewport, sem scroll
+    const rect = targetEl.getBoundingClientRect();
+    const vw   = window.innerWidth;
+    const vh   = window.innerHeight;
+    const TW   = 310;   // largura do tooltip
+    const TH   = 230;   // altura estimada do tooltip
 
-    // Labels
-    document.getElementById('tour-step-label').textContent =
-        `${currentLang === 'en' ? 'Step' : 'Passo'} ${tourStep + 1} ${currentLang === 'en' ? 'of' : 'de'} ${TOUR_STEPS.length}`;
-    document.getElementById('tour-title').textContent =
-        currentLang === 'en' ? step.titleEn : step.titlePt;
-    document.getElementById('tour-desc').textContent =
-        currentLang === 'en' ? step.descEn  : step.descPt;
+    // Spotlight ao redor do elemento
+    spotlight.style.width  = (rect.width  + 12) + 'px';
+    spotlight.style.height = (rect.height + 12) + 'px';
+    spotlight.style.left   = (rect.left   -  6) + 'px';
+    spotlight.style.top    = (rect.top    -  6) + 'px';
 
-    // Botão final
-    const nextBtn = document.getElementById('tour-next-btn');
-    const isLast  = tourStep === TOUR_STEPS.length - 1;
-    nextBtn.textContent = isLast
-        ? (currentLang === 'en' ? 'Finish ✓' : 'Concluir ✓')
-        : (currentLang === 'en' ? 'Next' : 'Próximo');
-
-    // Skip label
-    document.getElementById('tour-skip-btn').textContent =
-        currentLang === 'en' ? 'Skip tour' : 'Pular tour';
-
-    updateTourDots();
-    positionSpotlight(step.target);
-}
-
-function positionSpotlight(selector) {
-    const el = document.querySelector(selector);
-    const spotlight  = document.getElementById('tour-spotlight');
-    const tooltip    = document.getElementById('tour-tooltip');
-
-    if (!el) {
-        // fallback: centro da tela
-        spotlight.style.cssText = 'left:50%;top:50%;width:0;height:0;';
-        tooltip.style.cssText   = 'left:50%;top:50%;transform:translate(-50%,-50%)';
-        return;
-    }
-
-    const pad = 8;
-    const rect = el.getBoundingClientRect();
-
-    spotlight.style.left   = (rect.left   - pad) + 'px';
-    spotlight.style.top    = (rect.top    - pad) + 'px';
-    spotlight.style.width  = (rect.width  + pad * 2) + 'px';
-    spotlight.style.height = (rect.height + pad * 2) + 'px';
-
-    const tooltipW   = 300;
-    const tooltipH   = 200;
-    const gap        = 18;
-    const vw         = window.innerWidth;
-    const vh         = window.innerHeight;
-
-    let left = rect.right + gap;
+    // Tooltip: tenta à direita, depois à esquerda, senão centraliza
+    let left = rect.right + 16;
     let top  = rect.top;
 
-    // ─── AJUSTE INTELIGENTE DE POSIÇÃO ─────────────────────────────
-    // Se o tooltip sumir pela direita ou se o alvo for na sidebar esquerda, 
-    // joga o tooltip para a direita, mas garante que ele não saia da tela.
-    if (left + tooltipW > vw - 15) {
-        // Tenta jogar para a esquerda do elemento
-        left = rect.left - tooltipW - gap;
-        
-        // Se mesmo à esquerda ele sair da tela (telas muito pequenas/mobile)
-        // posiciona abaixo ou acima do elemento de forma centralizada
-        if (left < 15) {
-            left = Math.max(15, rect.left + (rect.width / 2) - (tooltipW / 2));
-            top = rect.bottom + gap;
-        }
-    }
+    if (left + TW > vw - 12) left = rect.left - TW - 16;
+    if (left < 12)            left = Math.round((vw - TW) / 2);
+    if (top + TH > vh - 12)  top  = vh - TH - 12;
+    if (top < 12)             top  = 12;
 
-    // Não deixa o limite esquerdo ser menor que a margem de segurança
-    if (left < 15) left = 15;
-    // Não deixa sair pelo limite da direita da tela
-    if (left + tooltipW > vw - 15) left = vw - tooltipW - 15;
+    tooltip.style.left = left + 'px';
+    tooltip.style.top  = top  + 'px';
 
-    // Ajustes verticais (para não sumir no topo ou no rodapé)
-    if (top + tooltipH > vh - 15)  top  = vh - tooltipH - 15;
-    if (top < 15) top = 15;
-    // ───────────────────────────────────────────────────────────────
+    // Aparece com fade após posição estar aplicada
+    requestAnimationFrame(() => {
+        spotlight.style.opacity = '1';
+        tooltip.style.opacity   = '1';
+    });
+}
 
-    tooltip.style.left      = left + 'px';
-    tooltip.style.top       = top  + 'px';
-    tooltip.style.transform = 'none';
+function renderTourStep() {
+    if (!tourActive) return;
+    const step      = TOUR_STEPS[tourStep];
+    const spotlight = document.getElementById('tour-spotlight');
+    const tooltip   = document.getElementById('tour-tooltip');
+
+    // 1. Oculta instantaneamente (sem transição de posição)
+    if (spotlight) spotlight.style.opacity = '0';
+    if (tooltip)   tooltip.style.opacity   = '0';
+
+    // 2. Troca de view se necessário
+    if (step.view) switchView(step.view);
+
+    // 3. Atualiza textos
+    const labelEl = document.getElementById('tour-step-label');
+    const titleEl = document.getElementById('tour-title');
+    const descEl  = document.getElementById('tour-desc');
+    const nextBtn = document.getElementById('tour-next-btn');
+
+    if (labelEl) labelEl.textContent = `${currentLang === 'en' ? 'Step' : 'Passo'} ${tourStep + 1} ${currentLang === 'en' ? 'of' : 'de'} ${TOUR_STEPS.length}`;
+    if (titleEl) titleEl.textContent  = currentLang === 'en' ? step.titleEn : step.titlePt;
+    if (descEl)  descEl.textContent   = currentLang === 'en' ? step.descEn  : step.descPt;
+
+    const isLast = tourStep === TOUR_STEPS.length - 1;
+    if (nextBtn) nextBtn.textContent = isLast
+        ? (currentLang === 'en' ? 'Finish ✓' : 'Concluir ✓')
+        : (currentLang === 'en' ? 'Next ➔'   : 'Avançar ➔');
+
+    updateTourDots();
+
+    // 4. Aguarda DOM renderizar (necessário quando há troca de view) e reposiciona
+    setTimeout(() => posicionarTourElementos(step), step.view ? 80 : 20);
 }
 
 function tourNext() {
@@ -777,7 +947,8 @@ function tourSkip() {
 
 function tourEnd() {
     tourActive = false;
-    document.getElementById('tour-overlay').style.display = 'none';
+    const overlay = document.getElementById('tour-overlay');
+    if (overlay) overlay.style.display = 'none';
     localStorage.setItem('tourDone', '1');
 }
 
@@ -786,19 +957,65 @@ function reiniciarTour() {
     tourStart();
 }
 
+// ─── Comparação de preços ────────────────────
+function toggleComparacao(idx) {
+    const expandRow = document.getElementById(`comp-expand-${idx}`);
+    const btn       = document.getElementById(`btn-comp-${idx}`);
+    if (!expandRow) return;
+
+    const aberto = expandRow.style.display !== 'none';
+    expandRow.style.display = aberto ? 'none' : 'table-row';
+
+    if (btn) {
+        btn.classList.toggle('ativo', !aberto);
+        const chev = btn.querySelector('.comp-chev');
+        if (chev) chev.style.transform = aberto ? '' : 'rotate(180deg)';
+    }
+}
+
+// ─── JSON Panel ──────────────────────────────
+function toggleJsonPanel() {
+    const body    = document.getElementById('json-format-body');
+    const chevron = document.getElementById('json-chevron');
+    if (!body) return;
+    const open = body.classList.toggle('open');
+    if (chevron) chevron.style.transform = open ? 'rotate(180deg)' : '';
+}
+
+function copiarJson() {
+    const block = document.getElementById('json-example-block');
+    const btn   = document.getElementById('json-copy-btn');
+    if (!block || !btn) return;
+    navigator.clipboard.writeText(block.textContent.trim()).then(() => {
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Copiado!';
+        btn.style.background = 'var(--success-bg)';
+        btn.style.color      = 'var(--success-text)';
+        setTimeout(() => {
+            btn.innerHTML = '<i class="fa-solid fa-copy"></i> <span data-i18n="json.copy">Copiar</span>';
+            btn.style.background = '';
+            btn.style.color      = '';
+        }, 2000);
+    });
+}
+
 // ─── Init ─────────────────────────────────────
 window.onload = () => {
-    initDarkMode();
-    currentLang = localStorage.getItem('lang') || 'pt';
+    // Carrega preferências de tema
+    const saved = localStorage.getItem('darkMode');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    toggleDarkMode(saved !== null ? saved === '1' : prefersDark);
+    
+    // Inicializa traduções e configurações
     applyTranslations();
     carregarConfiguracoes();
-    addNewRow(); // linha inicial na tabela de input
     renderizarHistorico();
+
+    // Roda polling imediato e define o intervalo (5 segundos)
     carregarDadosAutomacao();
     setInterval(carregarDadosAutomacao, 5000);
 
-    // Tour na primeira visita
+    // Dispara o tour se nunca tiver sido concluído
     if (!localStorage.getItem('tourDone')) {
-        setTimeout(tourStart, 800);
+        setTimeout(tourStart, 1000);
     }
 };

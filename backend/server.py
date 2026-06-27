@@ -98,7 +98,14 @@ def receber_resultado():
     cotacoes = dados.get("cotacoes", [])
     for cotacao in cotacoes:
         if "status" not in cotacao:
-            cotacao["status"] = "completo"
+            # Só marca como "completo" se houver de fato algum fornecedor com preço.
+            # Itens sem nenhuma cotação encontrada ficam como "sem_resultado".
+            fornecedores = cotacao.get("fornecedores", {}) or {}
+            tem_preco = any(
+                isinstance(f, dict) and f.get("preco") is not None
+                for f in fornecedores.values()
+            )
+            cotacao["status"] = "completo" if tem_preco else "sem_resultado"
 
     update_fields = {
         "status_robo":        dados.get("status_robo", "Atualizado pelo robô"),

@@ -142,11 +142,12 @@
                                     <th data-i18n="col.supplier">Fornecedor</th>
                                     <th data-i18n="col.price">Menor Preço</th>
                                     <th data-i18n="col.status">Status</th>
+                                    <th data-i18n="col.compare"></th>
                                 </tr>
                             </thead>
                             <tbody id="dashboard-table-body">
                                 <tr>
-                                    <td colspan="6" style="text-align:center;color:#999;padding:20px;">
+                                    <td colspan="7" style="text-align:center;color:#999;padding:20px;">
                                         Aguardando resultados do robô...
                                     </td>
                                 </tr>
@@ -208,6 +209,84 @@
                             <li class="step-item"><span class="step-num">4</span><span data-i18n="step4">Os resultados são enviados de volta.</span></li>
                             <li class="step-item"><span class="step-num">5</span><span data-i18n="step5">O Dashboard atualiza em tempo real.</span></li>
                         </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ JSON Format Panel ══ -->
+            <div class="card-panel json-format-panel" id="json-format-panel" style="margin-bottom:24px;">
+                <div class="json-format-header" onclick="toggleJsonPanel()">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <i class="fa-solid fa-code" style="color:var(--gold);font-size:15px;"></i>
+                        <span style="font-size:14px;font-weight:700;" data-i18n="json.title">Formato JSON — POST /resultado (UiPath → Servidor)</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span class="json-format-badge" data-i18n="json.badge">Referência para o Robô</span>
+                        <i class="fa-solid fa-chevron-down json-chevron" id="json-chevron"></i>
+                    </div>
+                </div>
+                <div id="json-format-body" class="json-format-body">
+                    <p class="json-format-desc" data-i18n="json.desc">
+                        O robô UiPath deve enviar um <strong>POST</strong> para <code>/resultado</code> com o corpo abaixo.
+                        Os campos <code>status</code> de cada cotação são preenchidos automaticamente pelo servidor se omitidos.
+                    </p>
+                    <div class="json-fields-grid">
+                        <div class="json-field-card">
+                            <div class="json-field-key">status_robo <span class="json-type">string</span></div>
+                            <div class="json-field-desc" data-i18n="json.f.status_robo">Ex: "Concluído" — aparece no badge de monitoramento.</div>
+                        </div>
+                        <div class="json-field-card">
+                            <div class="json-field-key">ultimo_log <span class="json-type">string</span></div>
+                            <div class="json-field-desc" data-i18n="json.f.ultimo_log">Mensagem exibida no console do robô em tempo real.</div>
+                        </div>
+                        <div class="json-field-card">
+                            <div class="json-field-key">alerta_erro <span class="json-type">string | null</span></div>
+                            <div class="json-field-desc" data-i18n="json.f.alerta_erro">Null se sem erros. Texto do erro se houver falha.</div>
+                        </div>
+                        <div class="json-field-card">
+                            <div class="json-field-key">performance_roi <span class="json-type">object</span></div>
+                            <div class="json-field-desc" data-i18n="json.f.roi">tempo_manual, tempo_robo, horas_poupadas (em hrs).</div>
+                        </div>
+                    </div>
+                    <div class="json-cot-title" data-i18n="json.cot.title">Estrutura de cada cotação em <code>cotacoes[]</code>:</div>
+                    <div class="json-block-wrap">
+                        <button class="json-copy-btn" onclick="copiarJson()" id="json-copy-btn">
+                            <i class="fa-solid fa-copy"></i> <span data-i18n="json.copy">Copiar</span>
+                        </button>
+                        <pre class="json-block" id="json-example-block">{
+  "status_robo": "Concluído",
+  "ultimo_log": "Pesquisa finalizada com sucesso.",
+  "alerta_erro": null,
+  "performance_roi": {
+    "tempo_manual": 32,
+    "tempo_robo": 2.5,
+    "horas_poupadas": 29.5,
+    "economia_financeira_brl": 15420.00
+  },
+  "cotacoes": [
+    {
+      "item": "Dell ThinkPad E14",
+      "desc": "16GB RAM, SSD 512GB",
+      "qtd": 2,
+      "fornecedores": {
+        "kabum":  { "preco": 4599.90, "link": "https://kabum.com.br/..." },
+        "pichau": { "preco": 4799.00, "link": "https://pichau.com.br/..." },
+        "amazon": { "preco": 4850.00, "link": "https://amazon.com.br/..." }
+      }
+    },
+    {
+      "item": "HP Monitor 24\"",
+      "desc": "Full HD, IPS",
+      "qtd": 1,
+      "status": "sem_resultado",
+      "fornecedores": {}
+    }
+  ]
+}</pre>
+                    </div>
+                    <div class="json-notes-row">
+                        <div class="json-note"><i class="fa-solid fa-circle-info"></i> <span data-i18n="json.note1">O campo <code>status</code> por cotação é opcional — o servidor detecta automaticamente.</span></div>
+                        <div class="json-note"><i class="fa-solid fa-circle-info"></i> <span data-i18n="json.note2">Chaves de fornecedor: <code>kabum</code>, <code>pichau</code>, <code>terabyte</code>, <code>amazon</code>, <code>mercadolivre</code>, <code>magazineluiza</code>, <code>dell</code>, <code>lenovo</code>.</span></div>
                     </div>
                 </div>
             </div>
