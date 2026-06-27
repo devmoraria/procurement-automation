@@ -345,6 +345,7 @@ async function enviarSolicitacao() {
             });
             renderizarHistorico();
             switchView('dashboard');
+            ultimoLog = "";
             appendLog(`✅ ${resultado.mensagem} Robô iniciando pesquisa...`);
         } else {
             alert("Erro: " + resultado.erro);
