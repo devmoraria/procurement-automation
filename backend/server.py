@@ -262,7 +262,7 @@ def receber_solicitacao():
     }}, upsert=True)
 
     for item in dados["itens"]:
-        item["status"] = "pendente"
+        item["status"] = "Pendente"
 
     colecao_solicitacoes.insert_one({
         "timestamp": ultima_atualizacao,
