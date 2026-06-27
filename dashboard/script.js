@@ -2,7 +2,7 @@
 // script.js — Automação de Compras TI | Grupo 1
 // ─────────────────────────────────────────────
 
-const SERVER_URL = "https://procurement-automation-qy7b.onrender.com";
+const SERVER_URL = "https://procurement-automation-7seb.onrender.com";
 
 // Histórico local
 const historicoLocal = [];
