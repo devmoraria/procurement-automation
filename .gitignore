@@ -1,0 +1,15 @@
+solicitacao.json
+__pycache__/
+*.pyc
+
+# Super importante: pastas de ambiente virtual
+venv/
+.venv/
+env/
+
+# Arquivos de variáveis de ambiente ( isso é muito importante cara, não cometa esse erro, é serio!)
+.env
+
+# Configurações locais de editores
+.vscode/
+.idea/

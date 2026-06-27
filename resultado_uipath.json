@@ -1,0 +1,29 @@
+{
+  "status_robo": "Concluido",
+  "ultimo_log": "Pesquisa finalizada com sucesso. 2 item(s) cotados.",
+  "alerta_erro": null,
+  "performance_roi": {
+    "tempo_manual": 32,
+    "tempo_robo": 2.5,
+    "horas_poupadas": 29.5,
+    "economia_financeira_brl": 1850.30
+  },
+  "cotacoes": [
+    {
+      "item": "Notebook Dell",
+      "desc": "Inspiron 15 3530 - SSD 512GB, 16GB RAM",
+      "qtd": 1,
+      "fornecedor": "Kabum",
+      "preco": 3499.90,
+      "link": "https://www.kabum.com.br/produto/exemplo-dell"
+    },
+    {
+      "item": "Notebook Lenovo",
+      "desc": "ThinkPad E14 - SSD 256GB, 8GB RAM",
+      "qtd": 2,
+      "fornecedor": "Pichau",
+      "preco": 2899.00,
+      "link": "https://www.pichau.com.br/produto/exemplo-lenovo"
+    }
+  ]
+}
