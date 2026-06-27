@@ -439,7 +439,7 @@ function badgeStatus(status) {
     }
     return `<span style="display:inline-block;padding:2px 8px;border-radius:10px;
         background:#fff3cd;color:#856404;font-size:11px;font-weight:600;">
-        ⏳ ${currentLang === 'en' ? 'Pending' : 'Pendente'}
+        ${currentLang === 'en' ? 'Pending' : 'Pendente'}
     </span>`;
 }
 
