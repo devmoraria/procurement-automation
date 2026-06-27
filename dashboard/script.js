@@ -1018,9 +1018,14 @@ window.onload = () => {
     // Roda polling imediato e define o intervalo (5 segundos)
     carregarDadosAutomacao();
     setInterval(carregarDadosAutomacao, 5000);
+<<<<<<< Updated upstream
 
     // Dispara o tour se nunca tiver sido concluído
     if (!localStorage.getItem('tourDone')) {
         setTimeout(tourStart, 1000);
     }
 };
+=======
+    if (!localStorage.getItem('tourDone')) setTimeout(tourStart, 1000);
+}
+>>>>>>> Stashed changes

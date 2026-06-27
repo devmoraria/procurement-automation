@@ -261,6 +261,9 @@ def receber_solicitacao():
         "cotacoes":           cotacoes_pendentes,
     }}, upsert=True)
 
+    for item in dados["itens"]:
+        item["status"] = "pendente"
+
     colecao_solicitacoes.insert_one({
         "timestamp": ultima_atualizacao,
         "itens":     dados["itens"]
