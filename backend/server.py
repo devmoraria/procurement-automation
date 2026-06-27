@@ -270,7 +270,18 @@ def receber_solicitacao():
 
     # ─── DISPARA O ROBÔ OU USA MOCK ───
     if USE_MOCK:
-        print("[MOCK] Modo mock ativo — dados já estão no MongoDB, robô não será disparado.")
+        ultimo_resultado = colecao_resultados.find_one(sort=[("_id", -1)])
+        if ultimo_resultado:
+            colecao_estado.update_one({"_id": ESTADO_ID}, {"$set": {
+                "status_robo":        ultimo_resultado.get("status_robo", "Concluído"),
+                "ultimo_log":         ultimo_resultado.get("ultimo_log", "Dados carregados do banco."),
+                "alerta_erro":        ultimo_resultado.get("alerta_erro", None),
+                "ultima_atualizacao": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                "cotacoes":           ultimo_resultado.get("cotacoes", []),
+            }})
+            print("[MOCK] Estado atualizado com último resultado de cotacoes_resultado.")
+        else:
+            print("[MOCK] Nenhum resultado encontrado em cotacoes_resultado.")
     else:
         thread = threading.Thread(target=uipath_disparar_job, daemon=True)
         thread.start()
