@@ -347,6 +347,7 @@ async function enviarSolicitacao() {
             switchView('dashboard');
             ultimoLog = "";
             appendLog(`✅ ${resultado.mensagem} Robô iniciando pesquisa...`);
+            carregarDadosAutomacao();
         } else {
             alert("Erro: " + resultado.erro);
         }
@@ -450,7 +451,7 @@ function badgeStatus(status) {
     }
     return `<span style="display:inline-block;padding:2px 8px;border-radius:10px;
         background:#fff3cd;color:#856404;font-size:11px;font-weight:600;">
-        ⏳ ${currentLang === 'en' ? 'Pending' : 'Pendente'}
+        ${currentLang === 'en' ? 'Pending' : 'Pendente'}
     </span>`;
 }
 
@@ -494,6 +495,7 @@ document.addEventListener('click', (e) => {
 
 // ─── Polling ─────────────────────────────────
 let ultimoLog = "";
+let ultimasCotacoes = "";
 
 async function carregarDadosAutomacao() {
     const statusBadge = document.getElementById('robot-status');
@@ -529,6 +531,12 @@ async function carregarDadosAutomacao() {
 
             const tbody = document.getElementById('dashboard-table-body');
             if (tbody) {
+                if (dados.ultimo_log === ultimoLog) return;
+                const comparacoesAbertas = [];
+                document.querySelectorAll('.btn-comparar.ativo').forEach(btn => {
+                    comparacoesAbertas.push(btn.id.replace('btn-comp-', ''));
+                });
+
                 tbody.innerHTML = "";
 
                 if (dados.cotacoes && dados.cotacoes.length > 0) {
@@ -659,12 +667,27 @@ async function carregarDadosAutomacao() {
                             </tr>`;
                         }
                     });
+
+                    comparacoesAbertas.forEach(idx => {
+                        const expandRow = document.getElementById(`comp-expand-${idx}`);
+                        const btn       = document.getElementById(`btn-comp-${idx}`);
+                        if (expandRow) expandRow.style.display = 'table-row';
+                        if (btn) {
+                            btn.classList.add('ativo');
+                            const chev = btn.querySelector('.comp-chev');
+                            if (chev) chev.style.transform = 'rotate(180deg)';
+                        }
+                    });
+
                 } else if (dados.status_robo === "Em execução") {
                     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#856404;padding:20px;">
                         <i class="fa-solid fa-circle-notch fa-spin"></i> ${currentLang === 'en' ? 'Robot searching prices...' : 'Robô pesquisando preços...'}
                     </td></tr>`;
                 }
+
+                ultimoLog = dados.ultimo_log;
             }
+            
         }
     } catch (err) {
         statusBadge.innerHTML = `<i class="fa-solid fa-plug-circle-xmark"></i> ${currentLang === 'en' ? 'Server offline' : 'Servidor offline'}`;
@@ -1018,14 +1041,9 @@ window.onload = () => {
     // Roda polling imediato e define o intervalo (5 segundos)
     carregarDadosAutomacao();
     setInterval(carregarDadosAutomacao, 5000);
-<<<<<<< Updated upstream
 
     // Dispara o tour se nunca tiver sido concluído
     if (!localStorage.getItem('tourDone')) {
         setTimeout(tourStart, 1000);
     }
 };
-=======
-    if (!localStorage.getItem('tourDone')) setTimeout(tourStart, 1000);
-}
->>>>>>> Stashed changes
